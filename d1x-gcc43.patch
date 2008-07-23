@@ -33,3 +33,16 @@ diff -up d1x/2d/bitblt.c~ d1x/2d/bitblt.c
  {
  	int a = olen/ilen, b = olen%ilen;
  	int c = 0, i;
+diff -up d1x/arch/sdl/digi.c~ d1x/arch/sdl/digi.c
+--- d1x/arch/sdl/digi.c~	2008-07-23 16:31:07.000000000 +0200
++++ d1x/arch/sdl/digi.c	2008-07-23 16:31:07.000000000 +0200
+@@ -32,7 +32,8 @@
+ 	    : "rm"(y), "i"(16), "0"(x));	\
+ 	_ax;					\
+ })
+-extern inline fix fixmul(fix x, fix y) { return do_fixmul(x,y); }
++static inline fix inlinefixmul(fix x, fix y) { return do_fixmul(x,y); }
++#define fixmul(a, b) inlinefixmul(a, b)
+ #endif
+ #endif
+ //end edit by adb
