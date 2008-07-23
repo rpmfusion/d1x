@@ -1,0 +1,34 @@
+--- d1x/main/playsave.c~	2006-10-14 09:24:09.000000000 +0200
++++ d1x/main/playsave.c	2006-10-14 09:24:09.000000000 +0200
+@@ -1350,25 +1350,25 @@
+ 			break;
+ 		case 7:
+ 			/* version 7 doesn't have the saved games array */
+-			if (player_file_size == (2222 - sizeof(saved_games)))
++			if (player_file_size == ((2212 - sizeof(saved_games)) + info.n_highest_levels * sizeof(hli)))
+ 				shareware_file = 1;
+-			if (player_file_size == (2262 - sizeof(saved_games)))
++			if (player_file_size == ((2252 - sizeof(saved_games)) + info.n_highest_levels * sizeof(hli)))
+ 				shareware_file = 0;
+ 			break;
+ 		case 8:
+-			if (player_file_size == 2222)
++			if (player_file_size == (2212 + info.n_highest_levels * sizeof(hli)))
+ 				shareware_file = 1;
+-			if (player_file_size == 2262)
++			if (player_file_size == (2252 + info.n_highest_levels * sizeof(hli)))
+ 				shareware_file = 0;
+ 			/* d1x-rebirth broke things by adding stuff to the
+ 			   player struct without thinking (sigh) */
+-			if (player_file_size == (2222 + 2*sizeof(int)))
++			if (player_file_size == (2212 + 2*sizeof(int) + info.n_highest_levels * sizeof(hli)))
+ 			{
+ 				shareware_file = 1;
+ 				/* skip the cruft added to the player_info struct */
+ 				fseek(file, 2*sizeof(int), SEEK_CUR);
+ 			}
+-			if (player_file_size == (2262 + 2*sizeof(int)))
++			if (player_file_size == (2252 + 2*sizeof(int) + info.n_highest_levels * sizeof(hli)))
+ 			{
+ 				shareware_file = 0;
+ 				/* skip the cruft added to the player_info struct */

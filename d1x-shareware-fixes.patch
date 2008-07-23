@@ -1,0 +1,89 @@
+diff -ur d1x.orig/main/newmenu.c d1x/main/newmenu.c
+--- d1x.orig/main/newmenu.c	2000-10-28 12:02:48.000000000 +0200
++++ d1x/main/newmenu.c	2005-01-03 10:48:09.817211864 +0100
+@@ -691,10 +691,14 @@
+ }
+ 
+ // Draw a left justfied string
+-void nm_string( bkg * b, int w1,int x, int y, char * s )
++void nm_string( bkg * b, int w1,int x, int y, char * _s )
+ {
+ 	int w,h,aw;
+-        char *p,*s1=0;
++        char *s, *p,*s1=0;
++        
++        s = strdup(_s);
++        if (!s)
++          return;
+ 
+ 	p = strchr( s, '\t' );
+ 	if (p && (w1>0) )	{
+@@ -713,14 +717,14 @@
+ 	
+ 	gr_string( x, y, s );
+ 
+-	if (p && (w1>0) )	{
++	if (s1)	{
+ 		gr_get_string_size(s1, &w, &h, &aw  );
+ 
+ 		gr_string( x+w1-w, y, s1 );
+ 
+ 		*p = '\t';
+ 	}
+-
++	free(s);
+ }
+ 
+ 
+diff -ur d1x.orig/main/playsave.c d1x/main/playsave.c
+--- d1x.orig/main/playsave.c	1999-06-15 01:44:12.000000000 +0200
++++ d1x/main/playsave.c	2005-01-03 14:40:50.944797864 +0100
+@@ -302,10 +302,12 @@
+ 
+ hli highest_levels[MAX_MISSIONS];
+ 
+-#define SAVED_GAME_VERSION		7		//increment this every time saved_game struct changes
++#define SAVED_GAME_VERSION		8		//increment this every time saved_game struct changes
+ 
+ //version 5 -> 6: added new highest level information
+ //version 6 -> 7: stripped out the old saved_game array.
++//version 7 -> 8: readded the old saved_game array since this is needed
++//                for shareware saved games
+ 
+ //the shareware is level 4
+ 
+@@ -1295,7 +1297,7 @@
+ 	Player_default_difficulty = info.default_difficulty_level;
+ 	Default_leveling_on = info.default_leveling_on;
+ 
+-	if ( info.saved_game_version < 7 )	{			// Read old saved games.
++	if ( info.saved_game_version != 7 ) {	// Read old & SW saved games.
+ 		if (fread(saved_games,sizeof(saved_games),1,file) != 1) {
+ 			errno_ret = errno;
+ 			fclose(file);
+@@ -1468,8 +1470,6 @@
+ 	info.id = SAVE_FILE_ID;
+ 	info.saved_game_version = SAVED_GAME_VERSION;
+ 	info.player_struct_version = PLAYER_STRUCT_VERSION;
+-	info.saved_game_version = SAVED_GAME_VERSION;
+-	info.player_struct_version = PLAYER_STRUCT_VERSION;
+ 	info.default_difficulty_level = Player_default_difficulty;
+ 	info.default_leveling_on = Auto_leveling_on;
+ 
+@@ -1512,11 +1512,11 @@
+ 		return errno_ret;
+ 	}
+ 
+-//	if (fwrite(saved_games,sizeof(saved_games),1,file) != 1) {
+-//		errno_ret = errno;
+-//		fclose(file);
+-//		return errno_ret;
+-//	}
++	if (fwrite(saved_games,sizeof(saved_games),1,file) != 1) {
++		errno_ret = errno;
++		fclose(file);
++		return errno_ret;
++	}
+ 
+ 	#ifdef NETWORK
+ 	if ((fwrite(Network_message_macro, MAX_MESSAGE_LEN, 4, file) != 4)) {

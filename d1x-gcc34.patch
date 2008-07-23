@@ -1,0 +1,13 @@
+--- d1x/main/custom.c.gcc34	2004-11-27 15:26:06.953447136 +0100
++++ d1x/main/custom.c	2004-11-27 15:28:38.088471120 +0100
+@@ -279,7 +279,9 @@
+ 		    Error( "Error modifying selector base in custom.c\n" );
+ 	    #endif
+ 	    if ( cip->flags & BM_FLAG_RLE ) {
+-		*(((int *)p)++) = j;
++	        int *ip = (int *)p;
++		*ip = j;
++		p += 4;
+ 		j -= 4;
+ 	    }
+ 	    if (cfread(p, 1, j, f) < 1)

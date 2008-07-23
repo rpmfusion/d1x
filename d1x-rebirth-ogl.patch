@@ -1,0 +1,1956 @@
+diff -urbB d1x/arch/ogl/gr.c ../d1x-rebirth_v0.42-src-20060416/arch/ogl/gr.c
+--- d1x/arch/ogl/gr.c	2000-10-28 11:31:08.000000000 +0200
++++ ../d1x-rebirth_v0.42-src-20060416/arch/ogl/gr.c	2006-08-19 11:31:29.000000000 +0200
+@@ -64,8 +67,11 @@
+ int gr_toggle_fullscreen(void){
+ 	gr_do_fullscreen(!ogl_fullscreen);
+ 	//	grd_curscreen->sc_mode=0;//hack to get it to reset screen mode
++	glFlush(); // ZICO - prevents black screen, screen glitches etc.
++ 
+ 	return ogl_fullscreen;
+ }
++
+ int arch_toggle_fullscreen_menu(void){
+ 	unsigned char *buf=NULL;
+ 
+@@ -226,6 +234,11 @@
+ 	grd_curscreen->sc_mode = mode;
+ 	grd_curscreen->sc_w = w;
+ 	grd_curscreen->sc_h = h;
++	if (FindArg("-16to9"))
++		grd_curscreen->sc_aspect = fixdiv(grd_curscreen->sc_w*9,grd_curscreen->sc_h*16);
++	else if (FindArg("-16to10"))
++		grd_curscreen->sc_aspect = fixdiv(grd_curscreen->sc_w*10,grd_curscreen->sc_h*16);
++	else
+ 	grd_curscreen->sc_aspect = fixdiv(grd_curscreen->sc_w*3,grd_curscreen->sc_h*4);
+ 	grd_curscreen->sc_canvas.cv_bitmap.bm_x = 0;
+ 	grd_curscreen->sc_canvas.cv_bitmap.bm_y = 0;
+@@ -332,7 +346,8 @@
+ 		ogl_voodoohack=1;
+ 		gr_toggle_fullscreen();
+ 	}
+-	if (FindArg("-fullscreen"))
++//	if (FindArg("-fullscreen"))
++	if (!(FindArg("-window"))) // ZICO - from window to fullscreen
+ 		gr_toggle_fullscreen();
+ #endif
+ 	if ((glt=FindArg("-gl_alttexmerge")))
+@@ -348,6 +363,11 @@
+ 		GL_texmagfilt=GL_LINEAR;
+ 		GL_texminfilt=GL_LINEAR_MIPMAP_NEAREST;
+ 	}
++		if ((glt=FindArg("-gl_trilinear")))
++	{
++		GL_texmagfilt = GL_LINEAR;
++		GL_texminfilt = GL_LINEAR_MIPMAP_LINEAR;
++	}
+ 	if ((t=FindArg("-gl_simple"))){
+ 		if (t>=glt){//allow overriding of earlier args
+ 			glt=t;
+@@ -576,57 +596,55 @@
+ 	}
+ }
+ 
++#define GL_BGR_EXT 0x80E0
++
++typedef struct {
++      unsigned char TGAheader[12];
++      unsigned char header[6];
++} TGA_header;
++
+ //writes out an uncompressed RGB .tga file
+ //if we got really spiffy, we could optionally link in libpng or something, and use that.
+-void write_bmp(char *savename,int w,int h,unsigned char *buf){
+-	int f;
+-#ifdef __WINDOWS__
+-	f=open(savename,O_CREAT|O_EXCL|O_WRONLY,S_IRUSR|S_IWUSR);
+-#else
+-	f=open(savename,O_CREAT|O_EXCL|O_WRONLY,S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
+-#endif
+-	if (f>=0){
+-		GLubyte    targaMagic[12] = { 0, //no identification field
+-			 0,//no colormap
+-			 2,//RGB image (well, BGR, actually)
+-			 0, 0, 0, 0, 0, 0, 0, 0, 0 };//no colormap or image origin stuff.
+-		GLubyte blah;
+-		int r;
+-		GLubyte *s;
+-		int x,y;
+-		
+-		//write .TGA header.
+-		write (f,targaMagic,sizeof(targaMagic));
+-		blah=w%256;write (f,&blah,1);//w, low
+-		blah=w/256;write (f,&blah,1);//w, high
+-		blah=h%256;write (f,&blah,1);//h, low
+-		blah=h/256;write (f,&blah,1);//h, high
+-		blah=24;write (f,&blah,1);//24 bpp
+-		blah=0;write (f,&blah,1);//no attribute bits, origin is lowerleft, no interleave
+-		
+-		s=buf;
+-		for (y=0;y<h;y++){//TGAs use BGR ordering of data.
+-			for (x=0;x<w;x++){
+-				blah=s[0];
+-				s[0]=s[2];
+-				s[2]=blah;
+-				s+=3;				
+-			}
+-		}
+-		x=0;y=w*h*3;
+-		while (x<y){
+-			r=write(f,buf+x,y);
+-			if (r<=0){
+-				mprintf((0,"screenshot error, couldn't write to %s (err %i)\n",savename,errno));
+-				break;
+-			}
+-			x+=r;y-=r;
+-		}
+-		close(f);
+-	}else{
+-		mprintf((0,"screenshot error, couldn't open %s (err %i)\n",savename,errno));
+-	}
++void write_bmp(char *savename,int w,int h,unsigned char *buf){ // ZICO - modified for win32
++	FILE* TGAFile;
++	TGA_header TGA;
++	GLbyte HeightH,HeightL,WidthH,WidthL;
++
++	buf = (unsigned char*)calloc(w*h*3,sizeof(unsigned char));
++
++	glReadPixels(0,0,w,h,GL_BGR_EXT,GL_UNSIGNED_BYTE,buf);
++
++	TGAFile = fopen(savename, "wb");
++
++	HeightH = (GLbyte)(h / 256);
++	HeightL = (GLbyte)(h % 256);
++	WidthH  = (GLbyte)(w / 256);
++	WidthL  = (GLbyte)(w % 256);
++	// Write TGA Header
++	TGA.TGAheader[0] = 0;
++	TGA.TGAheader[1] = 0;
++	TGA.TGAheader[2] = 2;
++	TGA.TGAheader[3] = 0;
++	TGA.TGAheader[4] = 0;
++	TGA.TGAheader[5] = 0;
++	TGA.TGAheader[6] = 0;
++	TGA.TGAheader[7] = 0;
++	TGA.TGAheader[8] = 0;
++	TGA.TGAheader[9] = 0;
++	TGA.TGAheader[10] = 0;
++	TGA.TGAheader[11] = 0;
++	TGA.header[0] = (GLbyte) WidthL;
++	TGA.header[1] = (GLbyte) WidthH;
++	TGA.header[2] = (GLbyte) HeightL;
++	TGA.header[3] = (GLbyte) HeightH;
++	TGA.header[4] = (GLbyte) 24;
++	TGA.header[5] = 0;
++	fwrite(&TGA,sizeof(TGA_header),1,TGAFile);
++	fwrite(buf,w*h*3*sizeof(unsigned char),1,TGAFile);
++	fclose(TGAFile);
++	free(buf);
+ }
++
+ void save_screen_shot(int automap_flag)
+ {
+ //	fix t1;
+@@ -656,18 +674,13 @@
+ //end this section addition/change - Victor Rachels
+ 
+ 	if (automap_flag) {
+-//	save_font = grd_curcanv->cv_font;
+-//	gr_set_curfont(GAME_FONT);
+-//	gr_set_fontcolor(gr_find_closest_color_current(0,31,0),-1);
+-//	gr_get_string_size(message,&w,&h,&aw);
+-//		modex_print_message(32, 2, message);
+ 	} else {
+ 		hud_message(MSGC_GAME_FEEDBACK,message);
+ 	}
+ 	
+ 	buf = malloc(grd_curscreen->sc_w*grd_curscreen->sc_h*3);
+ 	glReadBuffer(GL_FRONT);
+-	glReadPixels(0,0,grd_curscreen->sc_w,grd_curscreen->sc_h,GL_RGB,GL_UNSIGNED_BYTE,buf);
++	//glReadPixels(0,0,grd_curscreen->sc_w,grd_curscreen->sc_h,GL_RGB,GL_UNSIGNED_BYTE,buf);
+ 	write_bmp(savename,grd_curscreen->sc_w,grd_curscreen->sc_h,buf);
+ 	free(buf);
+ 
+diff -urbB d1x/arch/ogl/include/ogl_init.h ../d1x-rebirth_v0.42-src-20060416/arch/ogl/include/ogl_init.h
+--- d1x/arch/ogl/include/ogl_init.h	2006-08-19 11:33:19.000000000 +0200
++++ ../d1x-rebirth_v0.42-src-20060416/arch/ogl/include/ogl_init.h	2006-04-03 20:48:26.000000000 +0200
+@@ -34,7 +34,7 @@
+ #include "types.h"
+ 
+ 
+-#define OGL_TEXTURE_LIST_SIZE 2000
++#define OGL_TEXTURE_LIST_SIZE 20000 // ZICO - works better than 2000
+ 
+ typedef struct _ogl_texture {
+ 	int handle;
+@@ -143,6 +143,7 @@
+ 
+ void ogl_urect(int left,int top,int right,int bot);
+ bool ogl_ubitmapm_c(int x, int y,grs_bitmap *bm,int c);
++bool ogl_ubitmapm_cs(int x, int y,int dw, int dh, grs_bitmap *bm,int c, int scale, int orient);
+ bool ogl_ubitmapm(int x, int y,grs_bitmap *bm);
+ bool ogl_ubitblt_i(int dw,int dh,int dx,int dy, int sw, int sh, int sx, int sy, grs_bitmap * src, grs_bitmap * dest);
+ bool ogl_ubitblt(int w,int h,int dx,int dy, int sx, int sy, grs_bitmap * src, grs_bitmap * dest);
+diff -urbB d1x/arch/ogl/ogl.c ../d1x-rebirth_v0.42-src-20060416/arch/ogl/ogl.c
+--- d1x/arch/ogl/ogl.c	2006-08-19 11:33:19.000000000 +0200
++++ ../d1x-rebirth_v0.42-src-20060416/arch/ogl/ogl.c	2006-03-26 12:52:05.000000000 +0200
+@@ -1438,7 +1438,7 @@
+ 	glmprintf((0,"ogl_loadtexture(%p,%i,%i,%ix%i,%p):%i u=%f v=%f b=%i bu=%i (%i)\n",data,tex->tw,tex->th,dxo,dyo,tex,tex->handle,tex->u,tex->v,tex->bytes,tex->bytesu,r_texcount));
+ 
+ }
+-unsigned char decodebuf[512*512];
++unsigned char decodebuf[1024*1024];
+ void ogl_loadbmtexture_m(grs_bitmap *bm,int domipmap){
+ 	unsigned char *buf;
+ 	while (bm->bm_parent)
+@@ -1498,3 +1498,85 @@
+ //		bm->gltexture=-1;
+ 	}
+ }
++
++bool ogl_ubitmapm_cs(int x, int y,int dw, int dh, grs_bitmap *bm,int c, int scale, int orient) // ZICO - only used to scale cockpit and statusbar
++{
++	GLfloat xo,yo,xf,yf;
++	GLfloat u1,u2,v1,v2;
++	GLdouble h,a;
++	r_ubitmapc++;
++	x+=grd_curcanv->cv_bitmap.bm_x;
++	y+=grd_curcanv->cv_bitmap.bm_y;
++	xo=x/(float)last_width;
++	xf=(bm->bm_w+x)/(float)last_width;
++	yo=1.0-y/(float)last_height;
++	yf=1.0-(bm->bm_h+y)/(float)last_height;
++
++	if (dw < 0)
++		dw = grd_curcanv->cv_bitmap.bm_w;
++	else if (dw == 0)
++		dw = bm->bm_w;
++	if (dh < 0)
++		dh = grd_curcanv->cv_bitmap.bm_h;
++	else if (dh == 0)
++		dh = bm->bm_h;
++	r_ubitmapc++;
++	if (orient & 1) {
++		int h = dw;
++		dw = dh;
++		dh = h;
++		x += grd_curcanv->cv_bitmap.bm_y;
++		y += grd_curcanv->cv_bitmap.bm_x;
++	}
++	else {
++		x += grd_curcanv->cv_bitmap.bm_x;
++		y += grd_curcanv->cv_bitmap.bm_y;
++	}
++
++	a = (double) grd_curscreen->sc_w / (double) grd_curscreen->sc_h;
++	h = (double) scale / (double) F1_0;
++
++	xo = x / ((double) last_width * h);
++	xf = (dw + x) / ((double) last_width * h);
++	yo = 1.0 - y / ((double) last_height * h);
++	yf = 1.0 - (dh + y) / ((double) last_height * h);
++
++	OGL_ENABLE(TEXTURE_2D);
++	ogl_bindbmtex(bm);
++	ogl_texwrap(bm->gltexture,GL_CLAMP);
++	
++	if (bm->bm_x==0){
++		u1=0;
++		if (bm->bm_w==bm->gltexture->w)
++			u2=bm->gltexture->u;
++		else
++			u2=(bm->bm_w+bm->bm_x)/(float)bm->gltexture->tw;
++	}else {
++		u1=bm->bm_x/(float)bm->gltexture->tw;
++		u2=(bm->bm_w+bm->bm_x)/(float)bm->gltexture->tw;
++	}
++	if (bm->bm_y==0){
++		v1=0;
++		if (bm->bm_h==bm->gltexture->h)
++			v2=bm->gltexture->v;
++		else
++			v2=(bm->bm_h+bm->bm_y)/(float)bm->gltexture->th;
++	}else{
++		v1=bm->bm_y/(float)bm->gltexture->th;
++		v2=(bm->bm_h+bm->bm_y)/(float)bm->gltexture->th;
++	}
++
++	glBegin(GL_QUADS);
++	if (c<0)
++		glColor3f(1.0,1.0,1.0);
++	else
++	glColor3f(CPAL2Tr(c),CPAL2Tg(c),CPAL2Tb(c));
++	glTexCoord2f(u1, v1); glVertex2f(xo, yo);
++	glTexCoord2f(u2, v1); glVertex2f(xf, yo);
++	glTexCoord2f(u2, v2); glVertex2f(xf, yf);
++	glTexCoord2f(u1, v2); glVertex2f(xo, yf);
++	glActiveTextureARB(GL_TEXTURE0_ARB);
++	glEnd();
++	
++	return 0;
++}
+diff -urbB d1x/arch/sdl/gr.c ../d1x-rebirth_v0.42-src-20060416/arch/sdl/gr.c
+--- d1x/arch/sdl/gr.c	1999-11-21 14:00:09.000000000 +0100
++++ ../d1x-rebirth_v0.42-src-20060416/arch/sdl/gr.c	2006-04-08 21:44:42.000000000 +0200
+@@ -108,6 +108,11 @@
+ 	grd_curscreen->sc_mode = mode;
+ 	grd_curscreen->sc_w = w;
+ 	grd_curscreen->sc_h = h;
++	if (FindArg("-16to9"))
++		grd_curscreen->sc_aspect = fixdiv(grd_curscreen->sc_w*9,grd_curscreen->sc_h*16);
++	else if (FindArg("-16to10"))
++		grd_curscreen->sc_aspect = fixdiv(grd_curscreen->sc_w*10,grd_curscreen->sc_h*16);
++	else
+ 	grd_curscreen->sc_aspect = fixdiv(grd_curscreen->sc_w*3,grd_curscreen->sc_h*4);
+ 	grd_curscreen->sc_canvas.cv_bitmap.bm_x = 0;
+ 	grd_curscreen->sc_canvas.cv_bitmap.bm_y = 0;
+diff -urbB d1x/main/credits.c ../d1x-rebirth_v0.42-src-20060416/main/credits.c
+--- d1x/main/credits.c	2006-08-19 11:33:19.000000000 +0200
++++ ../d1x-rebirth_v0.42-src-20060416/main/credits.c	2006-04-14 22:03:26.000000000 +0200
+@@ -186,19 +50,53 @@
+ #include "cfile.h"
+ #include "compbit.h"
+ #include "songs.h"
++#ifdef OGL
++#include "ogl_init.h" // ZICO - for gl_scissors
++#endif
+ 
+-//#define ROW_SPACING 11
+-//#define NUM_LINES 20			//19
+-
+-ubyte fade_values[200] = { 1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,8,9,9,10,10,
+-11,11,12,12,12,13,13,14,14,15,15,15,16,16,17,17,17,18,18,19,19,19,20,20,
+-20,21,21,22,22,22,23,23,23,24,24,24,24,25,25,25,26,26,26,26,27,27,27,27,
+-28,28,28,28,28,29,29,29,29,29,29,30,30,30,30,30,30,30,30,30,31,31,31,31,
+-31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,30,30,30,30,30,
+-30,30,30,30,29,29,29,29,29,29,28,28,28,28,28,27,27,27,27,26,26,26,26,25,
+-25,25,24,24,24,24,23,23,23,22,22,22,21,21,20,20,20,19,19,19,18,18,17,17,
+-17,16,16,15,15,15,14,14,13,13,12,12,12,11,11,10,10,9,9,8,8,8,7,7,6,6,5,
+-5,4,4,3,3,2,2,1 };
++#define ROW_SPACING			(GHEIGHT/17)
++#define NUM_LINES			14
++#define CREDITS_BACKGROUND_FILENAME	"stars.pcx"
++#define CREDITS_FILE 			"credits.tex"
++
++#ifdef OGL
++ubyte fade_values_hires[480] = {
++0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
++0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
++0,0,0,0,0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,8,9,9,10,10,11,11,12,12,
++12,13,13,14,14,15,15,15,16,16,17,17,17,18,18,19,19,19,20,20,20,21,21,22,
++22,22,23,23,23,24,24,24,24,25,25,25,26,26,26,26,27,27,27,27,28,28,28,28,
++28,29,29,29,29,29,29,30,30,30,30,30,30,30,30,30,31,31,31,31,31,31,31,31,
++31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,
++31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,
++31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,
++31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,
++31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,
++31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,30,30,30,30,30,30,30,30,30,
++29,29,29,29,29,29,28,28,28,28,28,27,27,27,27,26,26,26,26,25,25,25,24,24,
++24,24,23,23,23,22,22,22,21,21,20,20,20,19,19,19,18,18,17,17,17,16,16,15,
++15,15,14,14,13,13,12,12,12,11,11,10,10,9,9,8,8,8,7,7,6,6,5,5,4,4,3,3,2,
++2,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
++0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
++0,0,0,0,0,0,0,0,0,0 };
++#else
++ubyte fade_values_hires[480] = { 1,1,1,2,2,2,2,2,3,3,3,3,3,4,4,4,4,4,5,5,5,
++5,5,5,6,6,6,6,6,7,7,7,7,7,8,8,8,8,8,9,9,9,9,9,10,10,10,10,10,10,11,11,11,11,11,12,12,12,12,12,12,
++13,13,13,13,13,14,14,14,14,14,14,15,15,15,15,15,15,16,16,16,16,16,17,17,17,17,17,17,18,18,
++18,18,18,18,18,19,19,19,19,19,19,20,20,20,20,20,20,20,21,21,21,21,21,21,22,22,22,22,22,22,
++22,22,23,23,23,23,23,23,23,24,24,24,24,24,24,24,24,25,25,25,25,25,25,25,25,25,26,26,26,26,
++26,26,26,26,26,27,27,27,27,27,27,27,27,27,27,28,28,28,28,28,28,28,28,28,28,28,28,29,29,29,
++29,29,29,29,29,29,29,29,29,29,29,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,
++30,30,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,
++31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,30,30,30,
++30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,29,29,29,29,29,29,29,29,29,29,29,29,
++29,29,28,28,28,28,28,28,28,28,28,28,28,28,27,27,27,27,27,27,27,27,27,27,26,26,26,26,26,26,
++26,26,26,25,25,25,25,25,25,25,25,25,24,24,24,24,24,24,24,24,23,23,23,23,23,23,23,22,22,22,
++22,22,22,22,22,21,21,21,21,21,21,20,20,20,20,20,20,20,19,19,19,19,19,19,18,18,18,18,18,18,
++18,17,17,17,17,17,17,16,16,16,16,16,15,15,15,15,15,15,14,14,14,14,14,14,13,13,13,13,13,12,
++12,12,12,12,12,11,11,11,11,11,10,10,10,10,10,10,9,9,9,9,9,8,8,8,8,8,7,7,7,7,7,6,6,6,6,6,5,5,5,5,
++5,5,4,4,4,4,4,3,3,3,3,3,2,2,2,2,2,1,1};
++#endif
+ 
+ extern ubyte *gr_bitblt_fade_table;
+ 
+@@ -206,36 +104,42 @@
+ grs_font * title_font;
+ grs_font * names_font;
+ 
+-void credits_show()
++typedef struct box {
++	int left, top, width, height;
++} box;
++
++//if filename passed is NULL, show normal credits
++void credits_show(char *credits_filename)
+ {
+-	int i, j, l, done;
+ 	CFILE * file;
+-	char (*buffer)[80];
+-	grs_bitmap backdrop;
+-	grs_canvas menucanv;
+-	ubyte backdrop_palette[768];
++	int i, j, l, done;
+ 	int pcx_error;
+ 	int buffer_line = 0;
+-	fix last_time;
+-	fix time_delay = 4180*200/SHEIGHT;			// ~ F1_0 / 12.9
+-	int first_line_offset,extra_inc=0;
++	int first_line_offset;
++	int extra_inc=0;
+ 	int have_bin_file = 0;
+-	ubyte *fade_values_scalled;
+-	int num_lines;
+ 	char * tempp;
+-	int ROW_SPACING;
++	char filename[32];
++	char buffer[NUM_LINES][80];
++	ubyte backdrop_palette[768];
++	ubyte *fade_values_scalled;
++	fix last_time;
++	fix time_delay = 2800;
++	grs_canvas *CreditsOffscreenBuf=NULL;
++	grs_bitmap backdrop;
++	box dirty_box[NUM_LINES];
+ 
+-	gr_use_palette_table( "credits.256" );
+-	//we need to reload the fonts, because we are using a different palette.  But we also want to load the correct sized font.  Thus, the gamefont_curfontname() calls.  -MPM
+-	header_font = gr_init_font( gamefont_curfontname(0));// "font1-1.fnt" );
+-	title_font = gr_init_font( gamefont_curfontname(3));//"font2-3.fnt" );
+-	names_font = gr_init_font( gamefont_curfontname(2));//"font2-2.fnt" );
+-	ROW_SPACING=names_font->ft_h+1;
++	// Clear out all tex buffer lines.
++	for (i=0; i<NUM_LINES; i++ )
++	{
++		buffer[i][0] = 0;
++		dirty_box[i].left = dirty_box[i].top = dirty_box[i].width = dirty_box[i].height = 0;
++	}
+ 	
+-	l = SHEIGHT;
+-	set_screen_mode(SCREEN_MENU);
+-	num_lines = l/ROW_SPACING + 1;
++	fade_values_scalled = malloc(SHEIGHT);
++	scale_line(fade_values_hires, fade_values_scalled, 480, GHEIGHT);
+ 
++	sprintf(filename, "%s", CREDITS_FILE);
+ 	have_bin_file = 0;
+ 	file = cfopen( "credits.tex", "rb" );
+ 	if (file == NULL) {
+@@ -245,52 +149,54 @@
+ 		have_bin_file = 1;
+ 	}
+ 
+-	gr_init_bitmap_data (&backdrop);
+-	pcx_error = pcx_read_bitmap("stars.pcx",&backdrop,BM_LINEAR,//grd_curcanv->cv_bitmap.bm_type,
+-			backdrop_palette);
++	set_screen_mode(SCREEN_MENU);
++
++	gr_use_palette_table( "credits.256" );
++#ifdef OGL
++	gr_palette_load(gr_palette);
++#endif
++	header_font = gr_init_font( gamefont_curfontname(0));
++	title_font = gr_init_font( gamefont_curfontname(3));
++	names_font = gr_init_font( gamefont_curfontname(2));
++	backdrop.bm_data=NULL;
++
++//MWA  Made backdrop bitmap linear since it should always be.  the current canvas may not
++//MWA  be linear, so we can't rely on grd_curcanv->cv_bitmap->bm_type.
++
++	pcx_error = pcx_read_bitmap(CREDITS_BACKGROUND_FILENAME,&backdrop, BM_LINEAR,backdrop_palette);
+ 	if (pcx_error != PCX_ERROR_NONE) {
+ 		cfclose(file);
+ 		return;
+ 	}
+ 
+-	fade_values_scalled = malloc(l);
+-	scale_line(fade_values, fade_values_scalled, 200, l);//hey, why not?  Its just a one dimensional bitmap :) -MPM
+-//	memset(fade_values_scalled, 31, l);
+-//	memcpy(fade_values_scalled, fade_values, 100);
+-//	memcpy(fade_values_scalled+l-100, fade_values+100, 100);
+-	
+-	buffer = malloc(num_lines*80);
+-	// Clear out all tex buffer lines.
+-	for (i=0; i<num_lines; i++ ) buffer[i][0] = 0;
+-
+-	songs_play_song( SONG_CREDITS, 0 );
++	songs_play_song( SONG_CREDITS, 1 );
+ 
+ 	gr_remap_bitmap_good( &backdrop,backdrop_palette, -1, -1 );
+ 
+-	gr_init_sub_canvas(&menucanv, VR_offscreen_menu, 0, 0, SWIDTH, SHEIGHT);//if the game res higher than the menu res, VR_offscreen_menu is too big. -MPM
+-	
+ 	gr_set_current_canvas(NULL);
+ 	show_fullscr(&backdrop);
+-
+         gr_update();
+-
+         gr_palette_fade_in( gr_palette, 32, 0 );
+ 
+-//        vfx_set_palette_sub( gr_palette );
++	CreditsOffscreenBuf = gr_create_canvas(GWIDTH,GHEIGHT);
++
++	if (!CreditsOffscreenBuf)
++		Error("Not enough memory to allocate Credits Buffer.");
+ 
+-	//gr_clear_canvas(BM_XRGB(0,0,0));
+ 	key_flush();
++
+ 	last_time = timer_get_fixed_seconds();
+ 	done = 0;
++#ifdef OGL
++	first_line_offset = GHEIGHT/8; // ZICO - keep the lines in canvas
++#else
+ 	first_line_offset = 0;
++#endif
+ 	while( 1 )	{
+ 		int k;
+ 
+ 		do {
+-
+-
+-
+-			buffer_line = (buffer_line+1) % num_lines;
++			buffer_line = (buffer_line+1) % NUM_LINES;
+ 			if (cfgets( buffer[buffer_line], 80, file ))	{
+ 				char *p;
+ 				if (have_bin_file) {				// is this a binary tbl file
+@@ -303,25 +209,24 @@
+ 				p = strchr(&buffer[buffer_line][0],'\n');
+ 				if (p) *p = '\0';
+ 			} else	{
+-				//fseek( file, 0, SEEK_SET);
+ 				buffer[buffer_line][0] = 0;
+ 				done++;
+ 			}
+ 		} while (extra_inc--);
+ 		extra_inc = 0;
+ 
+-		for (i=0; i<ROW_SPACING; i++ )	{
++		for (i=0; i<ROW_SPACING; i += (SWIDTH>=640?2:1) )	{
+ 			int y;
+ 
+ 			y = first_line_offset - i;
+ 
+-			//gr_set_current_canvas(VR_offscreen_menu);
+-			gr_set_current_canvas(&menucanv);
++			gr_set_current_canvas(CreditsOffscreenBuf);
+ 			show_fullscr(&backdrop);
+-			for (j=0; j<num_lines; j++ )	{
++
++			for (j=0; j<NUM_LINES; j++ )	{
+ 				char *s;
+ 
+-				l = (buffer_line + j + 1 ) % num_lines;
++				l = (buffer_line + j + 1 ) %  NUM_LINES;
+ 				s = buffer[l];
+ 
+ 				if ( s[0] == '!' ) {
+@@ -338,30 +243,64 @@
+ 				gr_bitblt_fade_table = fade_values_scalled;
+ 
+ 				tempp = strchr( s, '\t' );
+-				if ( tempp )	{
++				if ( !tempp )	{
++				// Wacky Fast Credits thing
+ 					int w, h, aw;
+-					*tempp = 0;
+-					gr_get_string_size( s, &w, &h, &aw );
+-					gr_printf( (160-w)/2, y, s );
+-					gr_get_string_size( &tempp[1], &w, &h, &aw );
+-                                        gr_printf( 160+((160-w)/2), y, &tempp[1] );
+-					*tempp = '\t';
+-				} else {
++
++					gr_get_string_size( s, &w, &h, &aw);
++					dirty_box[j].width = w;
++        				dirty_box[j].height = h;
++        				dirty_box[j].top = y;
++        				dirty_box[j].left = (GWIDTH - w) / 2;
++
+ 					gr_printf( 0x8000, y, s );
+ 				}
+ 				gr_bitblt_fade_table = NULL;
+-				if (buffer[l][0] == '!')
+-					y += ROW_SPACING/2;
+-				else
+ 					y += ROW_SPACING;
+ 			}
+-			gr_bm_ubitblt(
+-				GWIDTH, GHEIGHT,
+-				0, 0, 0, 0,
+-				&VR_offscreen_menu->cv_bitmap,
+-				&grd_curscreen->sc_canvas.cv_bitmap
+-			);
+ 
++				// Wacky Fast Credits Thing
++				box	*new_box;
++				grs_bitmap *tempbmp;
++
++				for (j=0; j<NUM_LINES; j++ )
++				{
++#ifdef OGL
++					glScissor (0,GHEIGHT/6,GWIDTH,GHEIGHT-(GHEIGHT/3)); // ZICO - create borders for new line endings
++					glEnable (0x0C11);
++#endif
++					new_box = &dirty_box[j];
++
++					tempbmp = &(CreditsOffscreenBuf->cv_bitmap);
++
++					gr_bm_bitblt(	new_box->width+1,
++							new_box->height+4,
++							new_box->left,
++							new_box->top,
++							new_box->left,
++							new_box->top,
++							tempbmp,
++							&(grd_curscreen->sc_canvas.cv_bitmap) );
++				}
++
++#ifndef OGL
++				for (j=0; j<NUM_LINES; j++ )
++				{
++					new_box = &dirty_box[j];
++
++					tempbmp = &(CreditsOffscreenBuf->cv_bitmap);
++
++					gr_bm_bitblt(   new_box->width,
++							new_box->height+2,
++							new_box->left,
++							new_box->top,
++							new_box->left,
++							new_box->top,
++							&backdrop,
++							tempbmp );
++				}
++				
++#endif
+                         gr_update();
+ 
+ 			while( timer_get_fixed_seconds() < last_time+time_delay );
+@@ -367,53 +306,37 @@
+ 			while( timer_get_fixed_seconds() < last_time+time_delay );
+ 			last_time = timer_get_fixed_seconds();
+ 		
+-
+ 			k = key_inkey();
+ 
+-			#ifndef NDEBUG
++#ifndef NDEBUG
+ 			if (k == KEY_BACKSP) {
+ 				Int3();
+ 				k=0;
+ 			}
+-			#endif
+-
+-//			{
+-//				fix ot = time_delay;
+-//				time_delay += (keyd_pressed[KEY_X] - keyd_pressed[KEY_Z])*100;
+-//				if (ot!=time_delay)	{
+-//					mprintf( (0, "[%x] ", time_delay ));
+-//				}
+-//			}
++#endif
+ 
+ 			if (k == KEY_PRINT_SCREEN) {
+ 				save_screen_shot(0);
+ 				k = 0;
+ 			}
+ 
+-			if ((k>0)||(done>num_lines))	{
++			if ((k>0)||(done>NUM_LINES))	{
+ 					gr_close_font(header_font);
+ 					gr_close_font(title_font);
+ 					gr_close_font(names_font);
+ 					gr_palette_fade_out( gr_palette, 32, 0 );
+ 					gr_use_palette_table( "palette.256" );
+-					gr_free_bitmap_data (&backdrop);
++					free(backdrop.bm_data);
+ 					cfclose(file);
+ 					songs_play_song( SONG_TITLE, 1 );
+-					free(fade_values_scalled);
+-					free(buffer);
++					if (CreditsOffscreenBuf != VR_offscreen_buffer)
++						gr_free_canvas(CreditsOffscreenBuf);
++					gr_palette_load( gr_palette );
++#ifdef OGL
++					glDisable(0x0C11);
++#endif
+ 					return;
+ 			}
+ 		}
+-
+-		if (buffer[(buffer_line + 1 ) % num_lines][0] == '!') {
+-			first_line_offset -= ROW_SPACING-ROW_SPACING/2;
+-			if (first_line_offset <= -ROW_SPACING) {
+-				first_line_offset += ROW_SPACING;
+-				extra_inc++;
+-			}
+-		}
+ 	}
+-
+ }
+-
+-
+diff -urbB d1x/main/game.c ../d1x-rebirth_v0.42-src-20060416/main/game.c
+--- d1x/main/game.c	2006-08-19 11:33:19.000000000 +0200
++++ ../d1x-rebirth_v0.42-src-20060416/main/game.c	2006-03-27 20:36:31.000000000 +0200
+@@ -535,9 +171,7 @@
+ int time_stopped,time_started;
+ #endif
+ 
+-ubyte * Game_cockpit_copy_code = NULL;
+-
+-ubyte new_cheats[]= {KEY_B^0xaa, KEY_B^0xaa, KEY_B^0xaa, KEY_F^0xaa, KEY_A^0xaa,
++ubyte new_cheats[]= {	KEY_B^0xaa, KEY_B^0xaa, KEY_B^0xaa, KEY_F^0xaa, KEY_A^0xaa,
+ 							KEY_U^0xaa, KEY_I^0xaa, KEY_R^0xaa, KEY_L^0xaa, KEY_H^0xaa,
+ 							KEY_G^0xaa, KEY_G^0xaa, KEY_U^0xaa, KEY_A^0xaa, KEY_I^0xaa,
+ 							KEY_G^0xaa, KEY_R^0xaa, KEY_I^0xaa, KEY_S^0xaa, KEY_M^0xaa,
+@@ -618,6 +251,7 @@
+ grs_bitmap background_bitmap;
+ 
+ int Game_aborted;
++void	update_cockpits(int force_redraw);
+ 
+ extern void newdemo_strip_frames(char *, int);
+ 
+@@ -728,18 +360,18 @@
+ #define cv_w  cv_bitmap.bm_w
+ #define cv_h  cv_bitmap.bm_h
+ 
+-//killed 7/5/99 - Owen Evans for letterbox in high rez
+-//#define LETTERBOX_HEIGHT 140
+-//end killed - OE
+-
+ //added 3/24/99 by Owen Evans for screen res changing
+ u_int32_t Game_screen_mode = 0;
+ //end added - OE
++int Game_window_x = 0;
++int Game_window_y = 0;
+ int Game_window_w = 0;
+ int Game_window_h = 0;
++int max_window_w = 0;
+ int max_window_h = 0;
+ 
+ int last_drawn_cockpit[2] = { -1, -1 };
++extern void ogl_loadbmtexture(grs_bitmap *bm);
+ 
+ extern int Rear_view;
+ 
+@@ -761,14 +393,23 @@
+ 	case CM_REAR_VIEW:
+ 		gr_set_current_canvas(&VR_screen_pages[VR_current_page]);
+ 		PIGGY_PAGE_IN(cockpit_bitmap[Cockpit_mode]);
++#ifdef OGL // ZICO - scalable
++		ogl_ubitmapm_cs (0, 0, -1, grd_curcanv->cv_bitmap.bm_h, &GameBitmaps[cockpit_bitmap[Cockpit_mode].index],255, F1_0, 0);
++#else
+ 		gr_ubitmapm(0,0, &GameBitmaps[cockpit_bitmap[Cockpit_mode].index]);
++#endif
+ 		break;
+ 	case CM_FULL_SCREEN:
+ 		break;
+ 	case CM_STATUS_BAR:
+ 		gr_set_current_canvas(&VR_screen_pages[VR_current_page]);
+ 		PIGGY_PAGE_IN(cockpit_bitmap[Cockpit_mode]);
++#ifdef OGL // ZICO - scalable
++		ogl_ubitmapm_cs (0, grd_curscreen->sc_h-grd_curcanv->cv_bitmap.bm_h/4-(grd_curscreen->sc_h/65), -1, grd_curcanv->cv_bitmap.bm_h/4+(grd_curscreen->sc_h/65), &GameBitmaps[cockpit_bitmap[Cockpit_mode].index],255, F1_0, 0);
++		// ZICO - cleanup ... find an easier way
++#else
+ 		gr_ubitmapm(0,max_window_h,&GameBitmaps[cockpit_bitmap[Cockpit_mode].index]);
++#endif
+ 		w = Game_window_w;
+ 		h = Game_window_h;
+ 		x = (VR_render_width - w)/2;
+@@ -777,7 +418,6 @@
+ 		break;
+ 	case CM_LETTERBOX:
+ 		gr_set_current_canvas(&VR_screen_pages[VR_current_page]);
+-		gr_clear_canvas( BM_XRGB(0,0,0) );
+ 		break;
+ 	}
+ 
+@@ -792,7 +432,7 @@
+ //called every time the screen mode or cockpit changes
+ void init_cockpit()
+ {
+-	int minx, maxx, miny, maxy, x, y;
++	int x, y;
+ 
+ 	//Initialize the on-screen canvases
+ 
+@@ -802,20 +442,13 @@
+ 	if ( VR_render_mode != VR_NONE )
+ 		Cockpit_mode = CM_FULL_SCREEN;
+ 
++#ifndef OGL
+ //changed 7/5/99 - Owen Evans for letterbox in hi res
+         if ( VR_screen_mode != SM(320,200) && Cockpit_mode != CM_LETTERBOX)    {               // This really should be 'if VR_screen_mode isn't linear'
+ //end changed - OE
+-                // We can only use cockpit or rearview mode in mode 13h
+-                //if ( (Cockpit_mode==CM_FULL_COCKPIT) || (Cockpit_mode==CM_REAR_VIEW) )        {
+-                //      if (Game_window_h > max_window_h)                       //too big for scalable
+-                //              Cockpit_mode = CM_FULL_SCREEN;
+-                //      else
+-                //              Cockpit_mode = CM_STATUS_BAR;
+-                //}
+-                //if ( (grd_curscreen->sc_w > 320) || (VR_use_paging) )
+-                //              Cockpit_mode = CM_FULL_SCREEN;
+                 Cockpit_mode = CM_FULL_SCREEN;
+         }
++#endif
+ 
+ 	if ( Screen_mode == SCREEN_EDITOR )
+ 		Cockpit_mode = CM_FULL_SCREEN;
+@@ -826,37 +459,16 @@
+ 
+ 	gr_set_curfont( GAME_FONT );
+ 
+-#ifdef PCCODE
+-	if (Game_cockpit_copy_code)
+-		free(Game_cockpit_copy_code);
+-#endif
+-	Game_cockpit_copy_code  = NULL;
+-
+ 	switch( Cockpit_mode )	{
+ 	case CM_FULL_COCKPIT:
+ 	case CM_REAR_VIEW:		{
+-		grs_bitmap *bm = &GameBitmaps[cockpit_bitmap[Cockpit_mode].index];
+-
+-		PIGGY_PAGE_IN(cockpit_bitmap[Cockpit_mode]);
+-		gr_set_current_canvas(VR_offscreen_buffer);
+-		gr_bitmap( 0, 0, bm );
+-		bm = &VR_offscreen_buffer->cv_bitmap;
+-		gr_set_transparent (bm, 1);
+-#ifdef PCCODE
+-		gr_ibitblt_find_hole_size ( bm, &minx, &miny, &maxx, &maxy );
+-		Game_cockpit_copy_code	= gr_ibitblt_create_mask( bm, minx, miny, maxx-minx+1, maxy-miny+1, VR_offscreen_buffer->cv_bitmap.bm_rowsize );
+-#else
+-		gr_ibitblt_find_hole_size ( bm, &minx, &miny, &maxx, &maxy );
+-		gr_ibitblt_create_mask( bm, minx, miny, maxx-minx+1, maxy-miny+1, VR_offscreen_buffer->cv_bitmap.bm_rowsize );
+-		Game_cockpit_copy_code = (ubyte *)-1;
+-#endif
+-		gr_set_bitmap_flags (bm, 0);
+-		game_init_render_sub_buffers( 0, 0, maxx-minx+1, maxy-miny+1 );
++		if (Cockpit_mode == CM_FULL_COCKPIT)
++			game_init_render_sub_buffers(0, 0, grd_curscreen->sc_w, (grd_curscreen->sc_h*2)/3);
++		else if (Cockpit_mode == CM_REAR_VIEW)
++			game_init_render_sub_buffers((16*grd_curscreen->sc_w)/640, (89*grd_curscreen->sc_h)/480, (604*grd_curscreen->sc_w)/640, (209*grd_curscreen->sc_h)/480);
+ 		break;
+ 		}
+ 	case CM_FULL_SCREEN:
+-//		game_init_render_sub_buffers( 0, 0, VR_render_width, VR_render_height );
+-	  
+         	x = (VR_render_width - Game_window_w) / 2;
+                 y = (VR_render_height - Game_window_h) / 2;
+ 
+@@ -866,6 +478,9 @@
+ 		break;
+ 
+ 	case CM_STATUS_BAR:	{
++#ifdef OGL // ZICO - scalable
++		game_init_render_sub_buffers(0, 0, grd_curscreen->sc_w, (grd_curscreen->sc_h*2)/2.7);
++#else
+ 		int x,y;
+ 
+ 		if (Game_window_h > max_window_h) {
+@@ -877,6 +492,7 @@
+ 		y = (max_window_h - Game_window_h)/2;
+ 
+ 		game_init_render_sub_buffers( x, y, Game_window_w, Game_window_h );
++#endif
+ 		break;
+ 		}
+ 	case CM_LETTERBOX:	{
+@@ -884,7 +500,6 @@
+ 
+ 		x = 0; w = VR_render_width;
+ //changed 7/5/99 for letterbox in hi res - Owen Evans
+-//KILLED	h = LETTERBOX_HEIGHT;
+ 		h = (VR_render_height * 3) / 4; // true letterbox size (16:9)
+ //end changed - OE
+ 		y = (VR_render_height-h)/2;
+@@ -947,29 +562,27 @@
+ 	HUD_clear_messages();
+ }
+ 
+-#define WINDOW_W_DELTA 24	//20
+-#define WINDOW_H_DELTA 12	//10
+-
+-#define WINDOW_MIN_W		160
++#define WINDOW_W_DELTA	((max_window_w / 16)&~1)
++#define WINDOW_H_DELTA	((max_window_h / 16)&~1)
++#define WINDOW_MIN_W	((max_window_w * 10) / 22)
+ 
+ void grow_window()
+ {
+-	if ((Cockpit_mode == CM_FULL_COCKPIT) && (grd_curscreen->sc_mode == SM(320,200))) {
++	if ((Cockpit_mode == CM_FULL_COCKPIT)) {
+ 		Game_window_h = max_window_h;
+ 		Game_window_w = VR_render_width;
+ 		toggle_cockpit();
+-		grow_window();
+ 		hud_message(MSGC_GAME_FEEDBACK, "Press F3 to return to Cockpit mode");
+ 		return;
+ 	}
+ 
+-	if ((Cockpit_mode != CM_STATUS_BAR) && (grd_curscreen->sc_mode == SM(320,200)))
++	if ((Cockpit_mode != CM_STATUS_BAR))
+ 		return;
+ 
+ 	if (Cockpit_mode == CM_FULL_SCREEN)
+ 		max_window_h = VR_render_height; 
+ 
+-	if ((Game_window_h >= max_window_h) && (grd_curscreen->sc_mode == SM(320,200))) {
++	if ((Game_window_h >= max_window_h)) {
+ 		Game_window_w = VR_render_width;
+ 		Game_window_h = VR_render_height;
+ 		select_cockpit(CM_FULL_SCREEN);
+@@ -1028,12 +641,10 @@
+ 		ofs_x = left % bm->bm_w;
+ 		dest_x = left;
+ 
+-		//h = (bot < dest_y+bm->bm_h)?(bot-dest_y+1):(bm->bm_h-ofs_y);
+ 		h = min(bot-dest_y+1,bm->bm_h-ofs_y);
+ 
+ 		for (x=tile_left;x<=tile_right;x++) {
+ 
+-			//w = (right < dest_x+bm->bm_w)?(right-dest_x+1):(bm->bm_w-ofs_x);
+ 			w = min(right-dest_x+1,bm->bm_w-ofs_x);
+ 
+ 			gr_bm_ubitblt(w,h,dest_x,dest_y,ofs_x,ofs_y,
+@@ -1065,24 +676,19 @@
+ 		Game_window_h = max_window_h;
+ 		Game_window_w = VR_render_width;
+ 		toggle_cockpit();
+-//		shrink_window();
+-//		shrink_window();
+-		hud_message(MSGC_GAME_FEEDBACK, "Press F3 to return to Cockpit mode");
++		HUD_init_message("Press F3 to return to Cockpit mode");
+ 		return;
+ 	}
+ 
+-	if ((Cockpit_mode == CM_FULL_SCREEN) && (grd_curscreen->sc_mode == SM(320,200)))	{
++	if (Cockpit_mode == CM_FULL_SCREEN )	{
+ 		Game_window_h = max_window_h;
+ 		select_cockpit(CM_STATUS_BAR);
+ 		return;
+ 	}
+ 
+-	if ((Cockpit_mode != CM_STATUS_BAR) && (grd_curscreen->sc_mode == SM(320,200)))
++	if (Cockpit_mode != CM_STATUS_BAR)
+ 		return;
+ 	
+-	if (Cockpit_mode == CM_FULL_SCREEN)
+-		max_window_h = VR_render_height;
+-
+ 	if (Game_window_w > WINDOW_MIN_W) {
+ 		int window_w_delta, window_h_delta;
+ 		int window_min_w, window_min_h;	
+@@ -1094,7 +700,7 @@
+ 
+ 		old_window_w = Game_window_w;
+ 		old_window_h = Game_window_h;
+-		if ((Cockpit_mode == CM_FULL_SCREEN) && (old_window_h==max_window_h)){
++		if ((Cockpit_mode == CM_FULL_SCREEN)){
+ 			//320x200 mode gets the status bar, giving them a wider viewing angle, thus a (slight) advantage.
+ 			//this merely adds the same ability (viewing angle, not status bar) to other resolutions.  -MM
+ 			window_w_delta = 0; //must be even
+@@ -1115,7 +721,7 @@
+ 		x = (VR_render_width - Game_window_w)/2;
+ 		y = (max_window_h - Game_window_h)/2;
+ 
+-		fill_background(x,y,Game_window_w,Game_window_h,window_w_delta/2,window_h_delta/2);
++		fill_background(x,y,Game_window_w,Game_window_h,WINDOW_W_DELTA/2,WINDOW_H_DELTA/2);
+ 
+ 		game_init_render_sub_buffers( x, y, Game_window_w, Game_window_h );
+ 	}
+@@ -1218,7 +825,6 @@
+ 
+         if ( (Screen_mode == sm) && !((sm==SCREEN_GAME) && (grd_curscreen->sc_mode != Game_screen_mode) && (Screen_mode == SCREEN_GAME))) {
+ 		gr_set_current_canvas( &VR_screen_pages[VR_current_page] );
+-//		if ( VR_use_paging )	gr_show_canvas( &VR_screen_pages[VR_current_page] );
+ #ifdef OGL
+ 		ogl_set_screen_mode();
+ #endif
+@@ -1256,16 +866,25 @@
+ //End section
+ 
+ 		if ( VR_render_mode == VR_NONE ) {
+-			if ( max_window_h == 0 && grd_curscreen->sc_mode == SM(320,200))	{
++#ifdef OGL // ZICO - scale the screen correctly for scalable statusbar
++			if ( max_window_h == 0 && grd_curscreen->sc_mode == SM(grd_curscreen->sc_w, grd_curscreen->sc_h))	{
++				max_window_h = (grd_curscreen->sc_h*2)/2.7;
++				Game_window_h = grd_curscreen->sc_h;
++			} else if (grd_curscreen->sc_mode == SM(grd_curscreen->sc_w, grd_curscreen->sc_h)) {
++				max_window_h = (grd_curscreen->sc_h*2)/2.7;
++			} else {
++				max_window_h = grd_curscreen->sc_h;
++			}
++#else
++			if ( max_window_h == 0 && grd_curscreen->sc_mode == SM(320, 200))	{
+ 				max_window_h = grd_curscreen->sc_h - GameBitmaps[cockpit_bitmap[CM_STATUS_BAR].index].bm_h;
+ 				Game_window_h = max_window_h;
+ 			} else if (grd_curscreen->sc_mode == SM(320,200)) {
+ 				max_window_h = grd_curscreen->sc_h - GameBitmaps[cockpit_bitmap[CM_STATUS_BAR].index].bm_h;
+ 			} else {
+ 				max_window_h = grd_curscreen->sc_h;
+-//				Game_window_h = max_window_h;
+ 			}
+-				
++#endif	
+ 		} else {
+ 			Cockpit_mode = CM_FULL_SCREEN;
+ 		}
+@@ -1814,7 +1420,7 @@
+ 			h += 7;
+ 
+ 		if (Cockpit_mode != CM_REAR_VIEW)
+-                        gr_printf((grd_curcanv->cv_bitmap.bm_w-w)/2, grd_curcanv->cv_bitmap.bm_h - h - 2, message );
++                        gr_printf((grd_curcanv->cv_bitmap.bm_w-w)/2, grd_curcanv->cv_bitmap.bm_h - ((double)grd_curscreen->sc_h/200)*h - 2, message ); // ZICO - added multiplicator for h for scalable cockpits
+ 	}
+ 
+ //added 9/15/98 by Victor Rachels for weapon autoselect toggle notification
+@@ -1926,7 +1510,7 @@
+ 	game_draw_hud_stuff();
+ 
+ 	if ( Game_double_buffer ) {		//copy to visible screen
+-		if ( Game_cockpit_copy_code==NULL )	{
++		//if ( Game_cockpit_copy_code==NULL )	{
+ #ifdef D1XD3D
+ 			Win32_flip_screens ();
+ 			VR_current_page = !VR_current_page;
+@@ -1947,14 +1531,12 @@
+ 			}
+ #endif
+ 		} else	{
+-#ifdef PCCODE
+-			gr_ibitblt( &VR_render_buffer[0].cv_bitmap, &VR_screen_pages[0].cv_bitmap, Game_cockpit_copy_code );
+-#else
+-			gr_ibitblt( &VR_render_buffer[0].cv_bitmap, &VR_screen_pages[0].cv_bitmap, 0 );
+-#endif
+-		}
++
++		
+ 	}
+ 
++	update_cockpits(1); // ZICO - should normally be 0
++
+ 	if (Cockpit_mode==CM_FULL_COCKPIT || Cockpit_mode==CM_STATUS_BAR) {
+ 
+ #ifndef SHAREWARE
+@@ -1984,7 +1566,7 @@
+ {
+ 	set_screen_mode( SCREEN_GAME );
+ 
+-	update_cockpits(0);
++//	update_cockpits(0);
+ 
+ 	play_homing_warning();
+ 
+@@ -2744,7 +2251,9 @@
+ {
+ 	//@@int demo_playing=0;
+ 	//@@int multi_game=0;
+-
++#ifdef __LINUX__
++	fix t1;
++#endif
+ 	do_lunacy_on();		//	Copy values for insane into copy buffer in ai.c
+ 	do_lunacy_off();		//	Restore true insane mode.
+ 
+@@ -2997,12 +2505,6 @@
+ 
+ 	restore_effect_bitmap_icons();
+ 
+-	if (Game_cockpit_copy_code)	{
+-#ifdef PCCODE
+-		free(Game_cockpit_copy_code);
+-#endif
+-		Game_cockpit_copy_code = NULL;
+-	}
+ 
+ 	gr_free_bitmap_data (&background_bitmap);
+ 
+diff -urbB d1x/main/gauges.c ../d1x-rebirth_v0.42-src-20060416/main/gauges.c
+--- d1x/main/gauges.c	2000-01-21 01:43:35.000000000 +0100
++++ ../d1x-rebirth_v0.42-src-20060416/main/gauges.c	2006-03-26 12:51:56.000000000 +0200
+@@ -397,7 +404,7 @@
+ 
+ #define SB_ENERGY_GAUGE_X 		98
+ #define SB_ENERGY_GAUGE_Y 		155
+-#define SB_ENERGY_GAUGE_W 		16
++#define SB_ENERGY_GAUGE_W 		17 // ZICO - 17 fits better in energy window - old: 16
+ #define SB_ENERGY_GAUGE_H 		41
+ 
+ #define SB_ENERGY_NUM_X 		(SB_ENERGY_GAUGE_X+2)
+@@ -427,22 +434,22 @@
+ 
+ #define PRIMARY_W_PIC_X			64
+ #define PRIMARY_W_PIC_Y			154
+-#define PRIMARY_W_TEXT_X		87
+-#define PRIMARY_W_TEXT_Y		157
+-#define PRIMARY_AMMO_X			(96-3)
+-#define PRIMARY_AMMO_Y			171
++#define PRIMARY_W_TEXT_X		FPOS_SCALEX*87
++#define PRIMARY_W_TEXT_Y		FPOS_SCALEY*157
++#define PRIMARY_AMMO_X			FPOS_SCALEX*(96-3)
++#define PRIMARY_AMMO_Y			FPOS_SCALEY*171
+ 
+ #define SECONDARY_W_PIC_X		234
+ #define SECONDARY_W_PIC_Y		154
+-#define SECONDARY_W_TEXT_X		207
+-#define SECONDARY_W_TEXT_Y		157
+-#define SECONDARY_AMMO_X		213
+-#define SECONDARY_AMMO_Y		171
++#define SECONDARY_W_TEXT_X		FPOS_SCALEX*207
++#define SECONDARY_W_TEXT_Y		FPOS_SCALEY*157
++#define SECONDARY_AMMO_X		FPOS_SCALEX*213
++#define SECONDARY_AMMO_Y		FPOS_SCALEY*171
+ 
+ #define SB_LIVES_X                      266
+ #define SB_LIVES_Y                      185
+ #define SB_LIVES_LABEL_X		237
+-#define SB_LIVES_LABEL_Y		(SB_LIVES_Y+1)
++#define SB_LIVES_LABEL_Y		(SB_LIVES_Y) // ZICO - removed +1
+ 
+ #define SB_SCORE_RIGHT			301
+ #define SB_SCORE_Y                      158
+@@ -477,6 +484,37 @@
+ 
+ #define FADE_SCALE	(2*i2f(GR_FADE_LEVELS)/REARM_TIME)		// fade out and back in REARM_TIME, in fade levels per seconds (int)
+ 
++// ZICO - needed for scaling gauges
++#ifdef OGL
++#define FPOS_SCALEX ((double)grd_curscreen->sc_w/320)
++#define FPOS_SCALEY ((double)grd_curscreen->sc_h/200)
++#define HUD_SCALE(v,s)	((int) ((double) (v) * (s) + 0.5))
++#define HUD_SCALE_X(v)	HUD_SCALE(v,FPOS_SCALEX)
++#define HUD_SCALE_Y(v)	HUD_SCALE(v,FPOS_SCALEY)
++#else
++#define FPOS_SCALEX 1
++#define FPOS_SCALEY 1
++#endif
++
++inline void hud_bitblt (int x, int y, grs_bitmap *bm, int scale, int orient)
++{
++#ifdef OGL
++ogl_ubitmapm_cs (
++	(x < 0) ? -x : HUD_SCALE_X (x), 
++	(y < 0) ? -y : HUD_SCALE_Y (y), 
++	HUD_SCALE_X (bm->bm_w), 
++	HUD_SCALE_Y (bm->bm_h), 
++	bm, 
++	-1,
++	scale,
++	orient
++	);
++#else
++gr_ubitmapm(x, y, bm);
++#endif
++}
++// ZICO - end of addition
++
+ typedef struct span {
+ 	byte l,r;
+ } span;
+@@ -576,6 +614,18 @@
+ #define N_LEFT_WINDOW_SPANS  (sizeof(weapon_window_left)/sizeof(*weapon_window_left))
+ #define N_RIGHT_WINDOW_SPANS (sizeof(weapon_window_right)/sizeof(*weapon_window_right))
+ 
++#ifdef OGL
++// ZICO - as long as we don't use fading we don't need these boxes - makes a better view in cockpit, however :)
++#define PRIMARY_W_BOX_LEFT	0	//63
++#define PRIMARY_W_BOX_TOP	0	//154
++#define PRIMARY_W_BOX_RIGHT	0	//(PRIMARY_W_BOX_LEFT+58)
++#define PRIMARY_W_BOX_BOT	0	//(PRIMARY_W_BOX_TOP+N_LEFT_WINDOW_SPANS-1)
++											
++#define SECONDARY_W_BOX_LEFT	0	//202	//207
++#define SECONDARY_W_BOX_TOP	0	//151
++#define SECONDARY_W_BOX_RIGHT	0	//263	//(SECONDARY_W_BOX_LEFT+54)
++#define SECONDARY_W_BOX_BOT	0	//(SECONDARY_W_BOX_TOP+N_RIGHT_WINDOW_SPANS-1)
++#else
+ #define PRIMARY_W_BOX_LEFT		63
+ #define PRIMARY_W_BOX_TOP		154
+ #define PRIMARY_W_BOX_RIGHT	(PRIMARY_W_BOX_LEFT+58)
+@@ -585,6 +635,7 @@
+ #define SECONDARY_W_BOX_TOP	151
+ #define SECONDARY_W_BOX_RIGHT	263	//(SECONDARY_W_BOX_LEFT+54)
+ #define SECONDARY_W_BOX_BOT	(SECONDARY_W_BOX_TOP+N_RIGHT_WINDOW_SPANS-1)
++#endif
+ 
+ #define SB_PRIMARY_W_BOX_LEFT		34		//50
+ #define SB_PRIMARY_W_BOX_TOP		153
+@@ -598,17 +649,17 @@
+ 
+ #define SB_PRIMARY_W_PIC_X			(SB_PRIMARY_W_BOX_LEFT+1)	//51
+ #define SB_PRIMARY_W_PIC_Y			154
+-#define SB_PRIMARY_W_TEXT_X		(SB_PRIMARY_W_BOX_LEFT+24)	//(51+23)
+-#define SB_PRIMARY_W_TEXT_Y		157
+-#define SB_PRIMARY_AMMO_X			((SB_PRIMARY_W_BOX_LEFT+33)-3)	//(51+32)
+-#define SB_PRIMARY_AMMO_Y			171
++#define SB_PRIMARY_W_TEXT_X		FPOS_SCALEX*(SB_PRIMARY_W_BOX_LEFT+24)	//(51+23)
++#define SB_PRIMARY_W_TEXT_Y		FPOS_SCALEY*157
++#define SB_PRIMARY_AMMO_X		FPOS_SCALEX*((SB_PRIMARY_W_BOX_LEFT+33)-3)	//(51+32)
++#define SB_PRIMARY_AMMO_Y		FPOS_SCALEY*171
+ 
+ #define SB_SECONDARY_W_PIC_X		(SB_SECONDARY_W_BOX_LEFT+29)	//(212+27)
+ #define SB_SECONDARY_W_PIC_Y		154
+-#define SB_SECONDARY_W_TEXT_X		(SB_SECONDARY_W_BOX_LEFT+2)	//212
+-#define SB_SECONDARY_W_TEXT_Y		157
+-#define SB_SECONDARY_AMMO_X		(SB_SECONDARY_W_BOX_LEFT+11)	//(212+9)
+-#define SB_SECONDARY_AMMO_Y		171
++#define SB_SECONDARY_W_TEXT_X		FPOS_SCALEX*(SB_SECONDARY_W_BOX_LEFT+2)	//212
++#define SB_SECONDARY_W_TEXT_Y		FPOS_SCALEY*157
++#define SB_SECONDARY_AMMO_X		FPOS_SCALEX*(SB_SECONDARY_W_BOX_LEFT+11)	//(212+9)
++#define SB_SECONDARY_AMMO_Y		FPOS_SCALEY*171
+ 
+ typedef struct gauge_box {
+ 	int left,top;
+@@ -683,7 +734,7 @@
+ 	char	score_str[20];
+ 	int	w, h, aw;
+ 
+-	if ((HUD_nmessages > 0) && (strlen(HUD_messages[hud_first]) > 38))
++	if ((HUD_nmessages > 0) && (strlen(HUD_messages[hud_first]) > 50)) // ZICO - hud msg can be longer than 38
+ 		return;
+ 
+ 	gr_set_curfont( GAME_FONT );
+@@ -756,9 +807,9 @@
+ 		gr_set_fontcolor(gr_getcolor(0,20,0),-1 );
+ 
+ 		if ( (Game_mode & GM_MULTI) && !(Game_mode & GM_MULTI_COOP) ) 
+-			gr_printf(SB_SCORE_LABEL_X,SB_SCORE_Y,"%s:", TXT_KILLS);
++			gr_printf(FPOS_SCALEX*SB_SCORE_LABEL_X,FPOS_SCALEY*SB_SCORE_Y,"%s:", TXT_KILLS);
+ 		else
+-			gr_printf(SB_SCORE_LABEL_X,SB_SCORE_Y,"%s:", TXT_SCORE);
++			gr_printf(FPOS_SCALEX*SB_SCORE_LABEL_X,FPOS_SCALEY*SB_SCORE_Y,"%s:", TXT_SCORE);
+ 	}
+ 
+ 	gr_set_curfont( GAME_FONT );
+@@ -768,12 +819,12 @@
+ 		sprintf(score_str, "%5d", Players[Player_num].score);
+ 	gr_get_string_size(score_str, &w, &h, &aw );
+ 
+-	x = SB_SCORE_RIGHT-w-2;
+-	y = SB_SCORE_Y;
++	x = FPOS_SCALEX*SB_SCORE_RIGHT-w-2;
++	y = FPOS_SCALEY*SB_SCORE_Y;
+ 
+ 	//erase old score
+ 	gr_setcolor(BM_XRGB(0,0,0));
+-	gr_rect(last_x[VR_current_page],y,SB_SCORE_RIGHT,y+GAME_FONT->ft_h);
++	gr_rect(last_x[VR_current_page],y,FPOS_SCALEX*SB_SCORE_RIGHT,y+GAME_FONT->ft_h);
+ 
+ 	if ( (Game_mode & GM_MULTI) && !(Game_mode & GM_MULTI_COOP) ) 
+ 		gr_set_fontcolor(gr_getcolor(0,20,0),-1 );
+@@ -806,7 +857,9 @@
+ 	if (score_time > 0) {
+ 		if (score_display != last_score_display[VR_current_page]) {
+ 			gr_setcolor(BM_XRGB(0,0,0));
++#ifndef OGL
+ 			gr_rect(last_x[VR_current_page],SB_SCORE_ADDED_Y,SB_SCORE_ADDED_RIGHT,SB_SCORE_ADDED_Y+GAME_FONT->ft_h);
++#endif
+ 			last_score_display[VR_current_page] = score_display;
+ 		}
+ 
+@@ -822,17 +875,19 @@
+ 
+ 		gr_get_string_size(score_str, &w, &h, &aw );
+ 
+-		x = SB_SCORE_ADDED_RIGHT-w-2;
++		x = FPOS_SCALEX*SB_SCORE_ADDED_RIGHT-w-2;
+ 
+ 		gr_set_fontcolor(gr_getcolor(0, color, 0),-1 );
+-		gr_printf(x, SB_SCORE_ADDED_Y, score_str);
++		gr_printf(x, FPOS_SCALEY*SB_SCORE_ADDED_Y, score_str);
+ 
+ 		last_x[VR_current_page] = x;
+ 
+ 	} else {
+ 		//erase old score
+ 		gr_setcolor(BM_XRGB(0,0,0));
++#ifndef OGL
+ 		gr_rect(last_x[VR_current_page],SB_SCORE_ADDED_Y,SB_SCORE_ADDED_RIGHT,SB_SCORE_ADDED_Y+GAME_FONT->ft_h);
++#endif
+ 
+ 		score_time = 0;
+ 		score_display = 0;
+@@ -873,7 +928,7 @@
+ 	if ((Cockpit_mode == CM_STATUS_BAR) || (Endlevel_sequence)) {
+ 		if (Last_homing_warning_shown[VR_current_page] == 1) {
+ 			PIGGY_PAGE_IN( Gauges[GAUGE_HOMING_WARNING_OFF] );
+-			gr_ubitmapm( 7, 171, &GameBitmaps[Gauges[GAUGE_HOMING_WARNING_OFF].index] );
++			hud_bitblt( 7, 171, &GameBitmaps[Gauges[GAUGE_HOMING_WARNING_OFF].index], F1_0, 0);
+ 			Last_homing_warning_shown[VR_current_page] = 0;
+ 		}
+ 		return;
+@@ -886,19 +941,19 @@
+ 		if (GameTime & 0x4000) {
+ 			if (Last_homing_warning_shown[VR_current_page] != 1) {
+ 				PIGGY_PAGE_IN(Gauges[GAUGE_HOMING_WARNING_ON]);
+-				gr_ubitmapm( 7, 171, &GameBitmaps[Gauges[GAUGE_HOMING_WARNING_ON].index]);
++				hud_bitblt( 7, 171, &GameBitmaps[Gauges[GAUGE_HOMING_WARNING_ON].index], F1_0, 0);
+ 				Last_homing_warning_shown[VR_current_page] = 1;
+ 			}
+ 		} else {
+ 			if (Last_homing_warning_shown[VR_current_page] != 0) {
+ 				PIGGY_PAGE_IN(Gauges[GAUGE_HOMING_WARNING_OFF]);
+-				gr_ubitmapm( 7, 171, &GameBitmaps[Gauges[GAUGE_HOMING_WARNING_OFF].index] );
++				hud_bitblt( 7, 171, &GameBitmaps[Gauges[GAUGE_HOMING_WARNING_OFF].index], F1_0, 0);
+ 				Last_homing_warning_shown[VR_current_page] = 0;
+ 			}
+ 		}
+ 	} else if (Last_homing_warning_shown[VR_current_page] != 0) {
+ 		PIGGY_PAGE_IN(Gauges[GAUGE_HOMING_WARNING_OFF]);
+-		gr_ubitmapm( 7, 171, &GameBitmaps[Gauges[GAUGE_HOMING_WARNING_OFF].index] );
++		hud_bitblt( 7, 171, &GameBitmaps[Gauges[GAUGE_HOMING_WARNING_OFF].index], F1_0, 0);
+ 		Last_homing_warning_shown[VR_current_page] = 0;
+ 	}
+ 
+@@ -920,22 +975,22 @@
+ }
+ 
+ void hud_show_keys(void)
+-{      //y was 24.  changed to 17 to fix (hopefully) conflict with pauseinfo
++{
+ #ifndef SHAREWARE
+ 	if (Players[Player_num].flags & PLAYER_FLAGS_BLUE_KEY) {
+ 		PIGGY_PAGE_IN(Gauges[KEY_ICON_BLUE]);
+-                gr_ubitmapm(2,17,&GameBitmaps[Gauges[KEY_ICON_BLUE].index]);
+-
++		hud_bitblt(2,17,&GameBitmaps[Gauges[KEY_ICON_BLUE].index], F1_0, 0);
+ 	}
+ 
+ 	if (Players[Player_num].flags & PLAYER_FLAGS_GOLD_KEY) {
+ 		PIGGY_PAGE_IN(Gauges[KEY_ICON_YELLOW]);
+-                gr_ubitmapm(10,17,&GameBitmaps[Gauges[KEY_ICON_YELLOW].index]);
++		hud_bitblt(10,17,&GameBitmaps[Gauges[KEY_ICON_YELLOW].index], F1_0, 0);
+ 	}
+ 
+ 	if (Players[Player_num].flags & PLAYER_FLAGS_RED_KEY) {
+ 		PIGGY_PAGE_IN(Gauges[KEY_ICON_RED]);
+-                gr_ubitmapm(18,17,&GameBitmaps[Gauges[KEY_ICON_RED].index]);
++		hud_bitblt(18,17,&GameBitmaps[Gauges[KEY_ICON_RED].index], F1_0, 0);
++
+ 	}
+ #endif
+ }
+@@ -1080,18 +1135,15 @@
+ 			x1=grd_curcanv->cv_w/2-(w);//originally /2-20
+ 			x2=grd_curcanv->cv_w/2+x2;//originally /2+10
+ 		}else{
+-			y=grd_curcanv->cv_h/2+8;
+-			x1=grd_curcanv->cv_w/2-(40+w);//originally /2-60
+-			x2=grd_curcanv->cv_w/2+(42+x2);//originally /2+50
++			y=grd_curcanv->cv_h/1.8+8; // ZICO - originally /2+8;
++			x1=grd_curcanv->cv_w/2.1-(40+w); //ZICO - originally 2-(40+w);
++			x2=grd_curcanv->cv_w/1.9+(42+x2); //ZICO - originally 2-(42+x2);
+ 		}
+ 		hud_show_weapons_mode1(0,1,0,x1,y);
+ 		hud_show_weapons_mode1(1,1,0,x2,y);
+ 		gr_set_fontcolor(gr_getcolor(14,14,23),-1 );
+-//		gr_printf(grd_curcanv->cv_w/2-8, y-27,"S%i", f2ir(Players[Player_num].shields));
+-//		gr_printf(grd_curcanv->cv_w/2-20, y-27,"S%i", f2ir(Players[Player_num].shields));
+ 		gr_printf(x2, y-(GAME_FONT->ft_h*4+4),"%i", f2ir(Players[Player_num].shields));//originally y-24
+ 		gr_set_fontcolor(gr_getcolor(25,18,6),-1 );
+-//		gr_printf(grd_curcanv->cv_w/2-20, y-19,"E%i", f2ir(Players[Player_num].energy));
+ 		gr_printf(x1, y-(GAME_FONT->ft_h*4+4),"%i", f2ir(Players[Player_num].energy));//originally y-24
+ 	}
+ //end edit -MM
+@@ -1184,6 +1233,8 @@
+ 
+ void hud_show_cloak_invuln(void)
+ {
++	gr_set_fontcolor(gr_getcolor(0,31,0),-1 );
++
+ 	if (Players[Player_num].flags & PLAYER_FLAGS_CLOAKED) {
+ 		int	y = grd_curcanv->cv_h;
+ 
+@@ -1247,7 +1298,7 @@
+ //draw the icons for number of lives
+ void hud_show_lives()
+ {
+-	if ((HUD_nmessages > 0) && (strlen(HUD_messages[hud_first]) > 38))
++	if ((HUD_nmessages > 0) && (strlen(HUD_messages[hud_first]) > 50)) // ZICO - hud msg can be longer than 38
+ 		return;
+ 
+ 	if (Game_mode & GM_MULTI) {
+@@ -1259,10 +1310,24 @@
+ 		gr_set_curfont( GAME_FONT );
+ 		gr_set_fontcolor(gr_getcolor(0,20,0),-1 );
+ 		PIGGY_PAGE_IN(Gauges[GAUGE_LIVES]);
++#ifdef OGL
++		if (grd_curscreen->sc_w >= 640 && cfexist(D1XDATAPATH "font3-1h.fnt")) {
++
++			gr_printf(11,3, "^");
++			gr_printf( 7,6, "'");
++			gr_printf(19,6, "'");
++			gr_printf( 7,4, "-");
++			gr_printf(13,4, "-");
++			gr_printf(10,7, "-");
++			gr_printf(24, 3, "x %d", Players[Player_num].lives-1);
++		} else 
++#endif
++		{
++
+ 		gr_ubitmapm(10,3,&GameBitmaps[Gauges[GAUGE_LIVES].index]);
+ 		gr_printf(22, 3, "x %d", Players[Player_num].lives-1);
+ 	}
+-
++	}
+ }
+ 
+ void sb_show_lives()
+@@ -1276,9 +1341,9 @@
+ 		gr_set_curfont( GAME_FONT );
+ 		gr_set_fontcolor(gr_getcolor(0,20,0),-1 );
+ 		if (Game_mode & GM_MULTI)
+-			gr_printf(SB_LIVES_LABEL_X,SB_LIVES_LABEL_Y,"%s:", TXT_DEATHS);
++			gr_printf(FPOS_SCALEX*SB_LIVES_LABEL_X,FPOS_SCALEY*SB_LIVES_LABEL_Y,"%s:", TXT_DEATHS);
+ 		else
+-			gr_printf(SB_LIVES_LABEL_X,SB_LIVES_LABEL_Y,"%s:", TXT_LIVES);
++			gr_printf(FPOS_SCALEX*SB_LIVES_LABEL_X,FPOS_SCALEY*SB_LIVES_LABEL_Y,"%s:", TXT_LIVES);
+ 	}
+ 
+ 	if (Game_mode & GM_MULTI)
+@@ -1291,10 +1356,12 @@
+ 		sprintf(killed_str, "%5d", Players[Player_num].net_killed_total);
+ 		gr_get_string_size(killed_str, &w, &h, &aw);
+ 		gr_setcolor(BM_XRGB(0,0,0));
++#ifndef OGL
+ 		gr_rect(last_x[VR_current_page], y+1, SB_SCORE_RIGHT, y+GAME_FONT->ft_h);
++#endif
+ 		gr_set_fontcolor(gr_getcolor(0,20,0),-1);
+-		x = SB_SCORE_RIGHT-w-2;		
+-		gr_printf(x, y+1, killed_str);
++		x = FPOS_SCALEX*SB_SCORE_RIGHT-w-2;		
++		gr_printf(x, FPOS_SCALEY*y+1, killed_str);
+ 		last_x[VR_current_page] = x;
+ 		return;
+ 	}
+@@ -1304,20 +1371,17 @@
+ 		//erase old icons
+ 
+ 		gr_setcolor(BM_XRGB(0,0,0));
+-		gr_rect(x, y, x+32, y+bm->bm_h);
++		gr_rect(FPOS_SCALEX*x, FPOS_SCALEY*y, FPOS_SCALEX*x+32, (FPOS_SCALEY*y)+bm->bm_h);
+ 
+ 		if (Players[Player_num].lives-1 > 0) {
+ 			gr_set_curfont( GAME_FONT );
+ 			gr_set_fontcolor(gr_getcolor(0,20,0),-1 );
+ 			PIGGY_PAGE_IN(Gauges[GAUGE_LIVES]);
+-			gr_ubitmapm(x, y,bm);
+-			gr_printf(x+12, y, "x %d", Players[Player_num].lives-1);
++			hud_bitblt(x, y,bm, F1_0, 0);
++			gr_printf(FPOS_SCALEX*x+FPOS_SCALEX*12, FPOS_SCALEY*y, "x %d", Players[Player_num].lives-1);
+ 		}
+ 	}
+ 
+-//	for (i=0;i<draw_count;i++,x+=bm->bm_w+2)
+-//		gr_ubitmapm(x,y,bm);
+-
+ }
+ 
+ #ifndef RELEASE
+@@ -1426,18 +1490,18 @@
+ 
+ void init_gauge_canvases()
+ {
+-	Canv_LeftEnergyGauge = gr_create_canvas( LEFT_ENERGY_GAUGE_W, LEFT_ENERGY_GAUGE_H );
+-	Canv_SBEnergyGauge = gr_create_canvas( SB_ENERGY_GAUGE_W, SB_ENERGY_GAUGE_H );
+-	Canv_RightEnergyGauge = gr_create_canvas( RIGHT_ENERGY_GAUGE_W, RIGHT_ENERGY_GAUGE_H );
+-	Canv_NumericalGauge = gr_create_canvas( NUMERICAL_GAUGE_W, NUMERICAL_GAUGE_H );
++	Canv_LeftEnergyGauge = gr_create_sub_canvas( grd_curcanv, LEFT_ENERGY_GAUGE_X, LEFT_ENERGY_GAUGE_Y, LEFT_ENERGY_GAUGE_W, LEFT_ENERGY_GAUGE_H );
++	Canv_SBEnergyGauge = gr_create_sub_canvas( grd_curcanv, SB_ENERGY_GAUGE_X, SB_ENERGY_GAUGE_Y, SB_ENERGY_GAUGE_W, SB_ENERGY_GAUGE_H );
++	Canv_RightEnergyGauge = gr_create_sub_canvas( grd_curcanv, RIGHT_ENERGY_GAUGE_X, RIGHT_ENERGY_GAUGE_Y, RIGHT_ENERGY_GAUGE_W, RIGHT_ENERGY_GAUGE_H );
++	Canv_NumericalGauge = gr_create_sub_canvas( grd_curcanv, NUMERICAL_GAUGE_X, NUMERICAL_GAUGE_Y, NUMERICAL_GAUGE_W, NUMERICAL_GAUGE_H );
+ }
+ 
+ void close_gauge_canvases()
+ {
+-	gr_free_canvas( Canv_LeftEnergyGauge );
+-	gr_free_canvas( Canv_SBEnergyGauge );
+-	gr_free_canvas( Canv_RightEnergyGauge );
+-	gr_free_canvas( Canv_NumericalGauge );
++	gr_free_sub_canvas( Canv_LeftEnergyGauge );
++	gr_free_sub_canvas( Canv_SBEnergyGauge );
++	gr_free_sub_canvas( Canv_RightEnergyGauge );
++	gr_free_sub_canvas( Canv_NumericalGauge );
+ }
+ 
+ void init_gauges()
+@@ -1464,15 +1528,102 @@
+ 	cloak_fade_state = 0;
+ }
+ 
++#ifdef OGL // ZICO - scalable
++void draw_energy_bar(int energy)
++{
++	grs_bitmap *bm;
++	int energy0;
++	int x1, x2, y, yMax, i;
++	int h0 = HUD_SCALE_X (LEFT_ENERGY_GAUGE_H - 1);
++	int h1 = HUD_SCALE_Y (LEFT_ENERGY_GAUGE_H / 4);
++	int h2 = HUD_SCALE_Y ((LEFT_ENERGY_GAUGE_H * 3) / 4);
++	int w1 = HUD_SCALE_X (LEFT_ENERGY_GAUGE_W - 1);
++	int w2 = HUD_SCALE_X (LEFT_ENERGY_GAUGE_W - 2);
++	int w3 = HUD_SCALE_X (LEFT_ENERGY_GAUGE_W - 3);
++	double eBarScale = (100.0 - (double) energy) * FPOS_SCALEX * 0.075 / (double) HUD_SCALE_Y (LEFT_ENERGY_GAUGE_H);
++
++	// Draw left energy bar
++	PIGGY_PAGE_IN(Gauges[GAUGE_ENERGY_LEFT]);
++	bm = &GameBitmaps[Gauges[GAUGE_ENERGY_LEFT].index];
++	hud_bitblt (LEFT_ENERGY_GAUGE_X, LEFT_ENERGY_GAUGE_Y, bm, F1_0, 0);
++
++	gr_setcolor(BM_XRGB(0,0,0));
++
++	energy0 = HUD_SCALE_X (56);
++	energy0 = energy0 - (energy * energy0) / 100;
++	if (energy < 100) {
++		for (i = 0; i < LEFT_ENERGY_GAUGE_H; i++) {
++			yMax = HUD_SCALE_Y (i + 1);
++			for (y = i; y <= yMax; y++) {
++				x1 = h0 - y;
++				x2 = x1 + energy0 + (int) ((double) y * eBarScale);
++				if (y < h1) {
++					if (x2 > w1) 
++						x2 = w1;
++					}
++				else if (y < h2) {
++					if (x2 > w2)
++						x2 = w2;
++					}
++				else {
++					if (x2 > w3) 
++						x2 = w3;
++					}
++				if (x2 > x1)
++					gr_rect(HUD_SCALE_X (LEFT_ENERGY_GAUGE_X) + x1, HUD_SCALE_Y (LEFT_ENERGY_GAUGE_Y) +y , HUD_SCALE_X (LEFT_ENERGY_GAUGE_X) + x2, HUD_SCALE_Y (LEFT_ENERGY_GAUGE_Y) +y +1);
++				}
++			}
++		}
++	gr_set_current_canvas( get_current_game_screen() );
++
++	// Draw right energy bar
++	PIGGY_PAGE_IN(Gauges[GAUGE_ENERGY_RIGHT]);
++	bm = &GameBitmaps[Gauges[GAUGE_ENERGY_RIGHT].index];
++	hud_bitblt (RIGHT_ENERGY_GAUGE_X-1, RIGHT_ENERGY_GAUGE_Y, bm, F1_0, 0);
++
++	gr_setcolor(BM_XRGB(0,0,0));
++
++	h0 = HUD_SCALE_X (RIGHT_ENERGY_GAUGE_W - RIGHT_ENERGY_GAUGE_H);
++	w1 = HUD_SCALE_X (1);
++	w2 = HUD_SCALE_X (2);
++	if (energy < 100) {
++		yMax = HUD_SCALE_Y (RIGHT_ENERGY_GAUGE_H);
++		for (i = 0; i < RIGHT_ENERGY_GAUGE_H; i++) {
++			yMax = HUD_SCALE_Y (i + 1);
++			for (y = i; y <= yMax; y++) {
++				x2 = h0 + y;
++				x1 = x2 - energy0 - (int) ((double) y * eBarScale);
++				if (y < h1) {
++					if (x1 < 0) 
++						x1 = 0;
++					}
++				else if (y < h2) {
++					if (x1 < w1) 
++						x1 = w1;
++					}
++				else {
++					if (x1 < w2) 
++						x1 = w2;
++					}
++				if (x2 > x1) 
++					gr_rect(HUD_SCALE_X (RIGHT_ENERGY_GAUGE_X) + x1, HUD_SCALE_Y (RIGHT_ENERGY_GAUGE_Y) +y , HUD_SCALE_X (RIGHT_ENERGY_GAUGE_X) + x2, HUD_SCALE_Y (RIGHT_ENERGY_GAUGE_Y) +y +1);
++				}
++			}
++		}
++	gr_set_current_canvas( get_current_game_screen() );
++}
++
++#else // ZICO - SDL mode with non-scalable cockpit
++
+ void draw_energy_bar(int energy)
+ {
+ 	int not_energy;
+ 	int x1, x2, y;
+ 
+ 	// Draw left energy bar
+-	gr_set_current_canvas( Canv_LeftEnergyGauge );
++	//gr_set_current_canvas( Canv_LeftEnergyGauge );
+ 	PIGGY_PAGE_IN(Gauges[GAUGE_ENERGY_LEFT]);
+-	gr_ubitmapm( 0, 0, &GameBitmaps[Gauges[GAUGE_ENERGY_LEFT].index] );
++	gr_ubitmapm( LEFT_ENERGY_GAUGE_X, LEFT_ENERGY_GAUGE_Y, &GameBitmaps[Gauges[GAUGE_ENERGY_LEFT].index] );
+ 	gr_setcolor( 0 );
+ 
+ 	not_energy = 61 - (energy*61)/100;
+@@ -1486,16 +1637,15 @@
+ 			if ( y>=2 && y<6 ) if (x2 > LEFT_ENERGY_GAUGE_W - 2) x2 = LEFT_ENERGY_GAUGE_W - 2;
+ 			if ( y>=6 ) if (x2 > LEFT_ENERGY_GAUGE_W - 3) x2 = LEFT_ENERGY_GAUGE_W - 3;
+ 			
+-			if (x2 > x1) gr_uscanline( x1, x2, y ); 
++			if (x2 > x1) gr_uscanline( LEFT_ENERGY_GAUGE_X+x1, LEFT_ENERGY_GAUGE_X+x2, LEFT_ENERGY_GAUGE_Y+y ); 
+ 		}
+ 
+ 	gr_set_current_canvas( get_current_game_screen() );
+-	gr_ubitmapm( LEFT_ENERGY_GAUGE_X, LEFT_ENERGY_GAUGE_Y, &Canv_LeftEnergyGauge->cv_bitmap );
+ 
+ 	// Draw right energy bar
+-	gr_set_current_canvas( Canv_RightEnergyGauge );
++	//gr_set_current_canvas( Canv_RightEnergyGauge );
+ 	PIGGY_PAGE_IN(Gauges[GAUGE_ENERGY_RIGHT]);
+-	gr_ubitmapm( 0, 0, &GameBitmaps[Gauges[GAUGE_ENERGY_RIGHT].index] );
++	gr_ubitmapm( RIGHT_ENERGY_GAUGE_X, RIGHT_ENERGY_GAUGE_Y, &GameBitmaps[Gauges[GAUGE_ENERGY_RIGHT].index] );
+ 
+ 	if (energy < 100)
+ 		for (y=0; y<8; y++) {
+@@ -1506,21 +1656,20 @@
+ 			if ( y>=2 && y<6 ) if (x1 < 1) x1 = 1;
+ 			if ( y>=6 ) if (x1 < 2) x1 = 2;
+ 			
+-			if (x2 > x1) gr_uscanline( x1, x2, y ); 
++			if (x2 > x1) gr_uscanline( RIGHT_ENERGY_GAUGE_X+x1, RIGHT_ENERGY_GAUGE_X+x2, RIGHT_ENERGY_GAUGE_Y+y ); 
+ 		}
+ 
+ 	gr_set_current_canvas( get_current_game_screen() );
+-	gr_ubitmapm( RIGHT_ENERGY_GAUGE_X, RIGHT_ENERGY_GAUGE_Y, &Canv_RightEnergyGauge->cv_bitmap );
+ 
+ }
++#endif
+ 
+ void draw_shield_bar(int shield)
+ {
+ 	int bm_num = shield>=100?9:(shield / 10);
+ 
+-	PIGGY_PAGE_IN(Gauges[GAUGE_SHIELDS+9-bm_num]	);
+-	gr_ubitmapm( SHIELD_GAUGE_X, SHIELD_GAUGE_Y, &GameBitmaps[Gauges[GAUGE_SHIELDS+9-bm_num].index] );
+-
++	PIGGY_PAGE_IN(Gauges[GAUGE_SHIELDS+9-bm_num]);
++	hud_bitblt (SHIELD_GAUGE_X, SHIELD_GAUGE_Y, &GameBitmaps[Gauges[GAUGE_SHIELDS+9-bm_num].index], F1_0, 0);
+ }
+ 
+ #define CLOAK_FADE_WAIT_TIME  0x400
+@@ -1587,11 +1736,15 @@
+ 	}
+ 
+ 	gr_set_current_canvas(&VR_render_buffer[0]);
+-	gr_ubitmap( x, y, bm);
++	if (!cloak_state) { // ZICO - quick hack to get cloak state without the fade-levels
++		hud_bitblt (x, y, bm, F1_0, 0); // ZICO - scalable
++	}
+ 
+ #ifndef D1XD3D
+ 	Gr_scanline_darkening_level = cloak_fade_value;
++#ifndef OGL
+ 	gr_rect(x, y, x+bm->bm_w-1, y+bm->bm_h-1);
++#endif
+ 	Gr_scanline_darkening_level = GR_FADE_LEVELS;
+ #endif
+ 
+@@ -1604,20 +1756,17 @@
+ 
+ void draw_numerical_display(int shield, int energy)
+ {
+-	gr_set_current_canvas( Canv_NumericalGauge );
++	int dx = NUMERICAL_GAUGE_X, dy = NUMERICAL_GAUGE_Y+1;
++
+ 	gr_set_curfont( GAME_FONT );
+ 	PIGGY_PAGE_IN(Gauges[GAUGE_NUMERICAL]);
+-	gr_ubitmap( 0, 0, &GameBitmaps[Gauges[GAUGE_NUMERICAL].index] );
++	hud_bitblt (dx, dy, &GameBitmaps[Gauges[GAUGE_NUMERICAL].index], F1_0, 0);
+ 
+ 	gr_set_fontcolor(gr_getcolor(14,14,23),-1 );
+-
+-	gr_printf((shield>99)?3:((shield>9)?5:7),15,"%d",shield);
+-
++	gr_printf((shield>99)?(grd_curscreen->sc_w/2)-3:((shield>9)?(grd_curscreen->sc_w/2)-1:(grd_curscreen->sc_w/2)+3),(grd_curscreen->sc_h/1.365),"%d",shield);
+ 	gr_set_fontcolor(gr_getcolor(25,18,6),-1 );
+-	gr_printf((energy>99)?3:((energy>9)?5:7),2,"%d",energy);
+-					  
++	gr_printf((energy>99)?(grd_curscreen->sc_w/2)-3:((energy>9)?(grd_curscreen->sc_w/2)-1:(grd_curscreen->sc_w/2)+3),(grd_curscreen->sc_h/1.49),"%d",energy);
+ 	gr_set_current_canvas( get_current_game_screen() );
+-	gr_ubitmapm( NUMERICAL_GAUGE_X, NUMERICAL_GAUGE_Y, &Canv_NumericalGauge->cv_bitmap );
+ }
+ 
+ 
+@@ -1627,26 +1776,26 @@
+ 
+ 	if (Players[Player_num].flags & PLAYER_FLAGS_BLUE_KEY )	{
+ 		PIGGY_PAGE_IN(Gauges[GAUGE_BLUE_KEY]);
+-                gr_ubitmapm( GAUGE_BLUE_KEY_X, GAUGE_BLUE_KEY_Y, &GameBitmaps[Gauges[GAUGE_BLUE_KEY].index] );
++                hud_bitblt( GAUGE_BLUE_KEY_X, GAUGE_BLUE_KEY_Y, &GameBitmaps[Gauges[GAUGE_BLUE_KEY].index], F1_0, 0 );
+ 	} else {
+ 		PIGGY_PAGE_IN(Gauges[GAUGE_BLUE_KEY_OFF]);
+-		gr_ubitmapm( GAUGE_BLUE_KEY_X, GAUGE_BLUE_KEY_Y, &GameBitmaps[Gauges[GAUGE_BLUE_KEY_OFF].index] );
++		hud_bitblt( GAUGE_BLUE_KEY_X, GAUGE_BLUE_KEY_Y, &GameBitmaps[Gauges[GAUGE_BLUE_KEY_OFF].index], F1_0, 0 );
+ 	}
+ 
+ 	if (Players[Player_num].flags & PLAYER_FLAGS_GOLD_KEY)	{
+ 		PIGGY_PAGE_IN(Gauges[GAUGE_GOLD_KEY]);
+-		gr_ubitmapm( GAUGE_GOLD_KEY_X, GAUGE_GOLD_KEY_Y, &GameBitmaps[Gauges[GAUGE_GOLD_KEY].index] );
++		hud_bitblt( GAUGE_GOLD_KEY_X, GAUGE_GOLD_KEY_Y, &GameBitmaps[Gauges[GAUGE_GOLD_KEY].index], F1_0, 0 );
+ 	} else {
+ 		PIGGY_PAGE_IN(Gauges[GAUGE_GOLD_KEY_OFF]);
+-		gr_ubitmapm( GAUGE_GOLD_KEY_X, GAUGE_GOLD_KEY_Y, &GameBitmaps[Gauges[GAUGE_GOLD_KEY_OFF].index] );
++		hud_bitblt( GAUGE_GOLD_KEY_X, GAUGE_GOLD_KEY_Y, &GameBitmaps[Gauges[GAUGE_GOLD_KEY_OFF].index], F1_0, 0 );
+ 	}
+ 
+ 	if (Players[Player_num].flags & PLAYER_FLAGS_RED_KEY)	{
+ 		PIGGY_PAGE_IN( Gauges[GAUGE_RED_KEY] );
+-		gr_ubitmapm( GAUGE_RED_KEY_X,  GAUGE_RED_KEY_Y,  &GameBitmaps[Gauges[GAUGE_RED_KEY].index] );
++		hud_bitblt( GAUGE_RED_KEY_X,  GAUGE_RED_KEY_Y,  &GameBitmaps[Gauges[GAUGE_RED_KEY].index], F1_0, 0 );
+ 	} else {
+ 		PIGGY_PAGE_IN(Gauges[GAUGE_RED_KEY_OFF]);
+-		gr_ubitmapm( GAUGE_RED_KEY_X,  GAUGE_RED_KEY_Y,  &GameBitmaps[Gauges[GAUGE_RED_KEY_OFF].index] );
++		hud_bitblt( GAUGE_RED_KEY_X,  GAUGE_RED_KEY_Y,  &GameBitmaps[Gauges[GAUGE_RED_KEY_OFF].index], F1_0, 0 );
+ 	}
+ }
+ 
+@@ -1658,13 +1807,13 @@
+ 
+ 	//clear the window
+ 	gr_setcolor(BM_XRGB(0,0,0));
+-	gr_rect(box->left,box->top,box->right,box->bot);
++	gr_rect(FPOS_SCALEX*box->left,FPOS_SCALEY*box->top,FPOS_SCALEX*box->right,FPOS_SCALEY*box->bot);
+ 
+ 	bm=&GameBitmaps[Weapon_info[info_index].picture.index];
+ 	Assert(bm != NULL);
+ 
+ 	PIGGY_PAGE_IN( Weapon_info[info_index].picture );
+-	gr_ubitmapm(pic_x,pic_y,bm);
++	hud_bitblt (pic_x, pic_y, bm, (Cockpit_mode == CM_FULL_SCREEN) ? 2 * F1_0 : F1_0, 0);
+ 
+ //edited 02/07/99 Matt Mueller
+         if (Gauge_hud_mode==0)
+@@ -1687,11 +1836,11 @@
+ 			
+ 			temp_str[5] = Players[Player_num].laser_level+1 + '0';
+ 			
+-			gr_printf(text_x,text_y+8, temp_str);
++			gr_printf(text_x,text_y+FPOS_SCALEY*8, temp_str);
+ 			
+ 			if (Players[Player_num].flags & PLAYER_FLAGS_QUAD_LASERS) {
+ 				strcpy(temp_str, TXT_QUAD);
+-				gr_printf(text_x,text_y+16, temp_str);
++				gr_printf(text_x,text_y+FPOS_SCALEY*16, temp_str);
+ 			}
+ 			
+ 		}
+@@ -1699,6 +1848,13 @@
+ //end edit -MM
+ }
+ 
++char    *PRIMARY_WEAPON_NAMES_VERYSHORT[5] = { // ZICO - new weapon names for cockpit and sb
++    "Laser", 
++    "Vulcan", 
++    "Spread", 
++    "Plasma", 
++    "Fusion" 
++};
+ 
+ void draw_weapon_info(int weapon_type,int weapon_num)
+ {
+@@ -1716,7 +1873,8 @@
+           draw_weapon_info_sub(Primary_weapon_to_weapon_info[weapon_num],
+               &gauge_boxes[2],
+               SB_PRIMARY_W_PIC_X,SB_PRIMARY_W_PIC_Y,
+-              PRIMARY_WEAPON_NAMES_SHORT(weapon_num),
++              //PRIMARY_WEAPON_NAMES_SHORT(weapon_num),
++              PRIMARY_WEAPON_NAMES_VERYSHORT[weapon_num], // ZICO - call for new very short names
+               SB_PRIMARY_W_TEXT_X,SB_PRIMARY_W_TEXT_Y);
+           x=SB_PRIMARY_AMMO_X;
+           y=SB_PRIMARY_AMMO_Y;
+@@ -1726,7 +1884,8 @@
+           draw_weapon_info_sub(Primary_weapon_to_weapon_info[weapon_num],
+               &gauge_boxes[0],
+               PRIMARY_W_PIC_X,PRIMARY_W_PIC_Y,
+-              PRIMARY_WEAPON_NAMES_SHORT(weapon_num),
++              //PRIMARY_WEAPON_NAMES_SHORT(weapon_num),
++              PRIMARY_WEAPON_NAMES_VERYSHORT[weapon_num], // ZICO - call for new very short names
+               PRIMARY_W_TEXT_X,PRIMARY_W_TEXT_Y);
+           x=PRIMARY_AMMO_X;
+           y=PRIMARY_AMMO_Y;
+@@ -1834,7 +1993,9 @@
+ {
+  int drew_flag=0;
+ 
++#ifndef OGL
+   gr_set_current_canvas(&VR_render_buffer[0]);
++#endif
+   gr_set_curfont( GAME_FONT );
+ 
+    if (weapon_num != old_weapon[weapon_type][VR_current_page] &&
+@@ -1972,23 +2133,21 @@
+ {
+ 	int erase_height;
+ 
+-	gr_set_current_canvas( Canv_SBEnergyGauge );
+ 	PIGGY_PAGE_IN(Gauges[SB_GAUGE_ENERGY]);
+-	gr_ubitmapm( 0, 0, &GameBitmaps[Gauges[SB_GAUGE_ENERGY].index] );
+-
++	hud_bitblt( SB_ENERGY_GAUGE_X, SB_ENERGY_GAUGE_Y, &GameBitmaps[Gauges[SB_GAUGE_ENERGY].index], F1_0, 0 );
+ 	erase_height = (100 - energy) * SB_ENERGY_GAUGE_H / 100;
+ 
+ 	if (erase_height > 0) {
+ 		gr_setcolor( 0 );
+-		gr_rect(0,0,SB_ENERGY_GAUGE_W-1,erase_height-1);
++		gr_rect(FPOS_SCALEX*SB_ENERGY_GAUGE_X,FPOS_SCALEY*SB_ENERGY_GAUGE_Y,FPOS_SCALEX*(SB_ENERGY_GAUGE_X+SB_ENERGY_GAUGE_W)-1,FPOS_SCALEY*(SB_ENERGY_GAUGE_Y+(erase_height-1))); // ZICO - maths are great, right? :)
+ 	}
+ 
+ 	gr_set_current_canvas( get_current_game_screen() );
+-	gr_ubitmapm( SB_ENERGY_GAUGE_X, SB_ENERGY_GAUGE_Y, &Canv_SBEnergyGauge->cv_bitmap );
++	//gr_ubitmapm( SB_ENERGY_GAUGE_X, SB_ENERGY_GAUGE_Y, &Canv_SBEnergyGauge->cv_bitmap );
+ 
+ 	//draw numbers
+ 	gr_set_fontcolor(gr_getcolor(25,18,6),-1 );
+-	gr_printf((energy>99)?SB_ENERGY_NUM_X:((energy>9)?SB_ENERGY_NUM_X+2:SB_ENERGY_NUM_X+4),SB_ENERGY_NUM_Y,"%d",energy);
++	gr_printf((energy>99)?FPOS_SCALEX*SB_ENERGY_NUM_X:((energy>9)?FPOS_SCALEX*(SB_ENERGY_NUM_X+2):FPOS_SCALEX*(SB_ENERGY_NUM_X+4)),FPOS_SCALEY*SB_ENERGY_NUM_Y,"%d",energy);
+ 					  
+ }
+ 
+@@ -2004,9 +2163,11 @@
+ 	//erase old one
+ 	PIGGY_PAGE_IN( cockpit_bitmap[Cockpit_mode] );
+ 	gr_setcolor(gr_gpixel(bm,SB_SHIELD_NUM_X,SB_SHIELD_NUM_Y-(VR_render_height-bm->bm_h)));
++#ifndef OGL
+ 	gr_rect(SB_SHIELD_NUM_X,SB_SHIELD_NUM_Y,SB_SHIELD_NUM_X+13,SB_SHIELD_NUM_Y+GAME_FONT->ft_h);
++#endif
+ 
+-	gr_printf((shield>99)?SB_SHIELD_NUM_X:((shield>9)?SB_SHIELD_NUM_X+2:SB_SHIELD_NUM_X+4),SB_SHIELD_NUM_Y,"%d",shield);
++	gr_printf((shield>99)?FPOS_SCALEX*SB_SHIELD_NUM_X:((shield>9)?FPOS_SCALEX*(SB_SHIELD_NUM_X+2):FPOS_SCALEX*(SB_SHIELD_NUM_X+4)),FPOS_SCALEY*SB_SHIELD_NUM_Y,"%d",shield);
+ }
+ 
+ void sb_draw_shield_bar(int shield)
+@@ -2016,8 +2177,7 @@
+ 	gr_set_current_canvas( get_current_game_screen() );
+ 
+ 	PIGGY_PAGE_IN( Gauges[GAUGE_SHIELDS+9-bm_num] );
+-	gr_ubitmapm( SB_SHIELD_GAUGE_X, SB_SHIELD_GAUGE_Y, &GameBitmaps[Gauges[GAUGE_SHIELDS+9-bm_num].index] );
+-
++	hud_bitblt( SB_SHIELD_GAUGE_X, SB_SHIELD_GAUGE_Y, &GameBitmaps[Gauges[GAUGE_SHIELDS+9-bm_num].index], F1_0, 0 );
+ }
+ 
+ void sb_draw_keys()
+@@ -2029,14 +2189,13 @@
+ 
+ 	bm = &GameBitmaps[Gauges[(flags&PLAYER_FLAGS_BLUE_KEY)?SB_GAUGE_BLUE_KEY:SB_GAUGE_BLUE_KEY_OFF].index];
+ 	PIGGY_PAGE_IN(Gauges[(flags&PLAYER_FLAGS_BLUE_KEY)?SB_GAUGE_BLUE_KEY:SB_GAUGE_BLUE_KEY_OFF]);
+-	gr_ubitmapm( SB_GAUGE_KEYS_X, SB_GAUGE_BLUE_KEY_Y, bm );
++	hud_bitblt( SB_GAUGE_KEYS_X, SB_GAUGE_BLUE_KEY_Y, bm, F1_0, 0 );
+ 	bm = &GameBitmaps[Gauges[(flags&PLAYER_FLAGS_GOLD_KEY)?SB_GAUGE_GOLD_KEY:SB_GAUGE_GOLD_KEY_OFF].index];
+ 	PIGGY_PAGE_IN(Gauges[(flags&PLAYER_FLAGS_GOLD_KEY)?SB_GAUGE_GOLD_KEY:SB_GAUGE_GOLD_KEY_OFF]);
+-	gr_ubitmapm( SB_GAUGE_KEYS_X, SB_GAUGE_GOLD_KEY_Y, bm );
++	hud_bitblt( SB_GAUGE_KEYS_X, SB_GAUGE_GOLD_KEY_Y, bm, F1_0, 0 );
+ 	bm = &GameBitmaps[Gauges[(flags&PLAYER_FLAGS_RED_KEY)?SB_GAUGE_RED_KEY:SB_GAUGE_RED_KEY_OFF].index];
+ 	PIGGY_PAGE_IN(Gauges[(flags&PLAYER_FLAGS_RED_KEY)?SB_GAUGE_RED_KEY:SB_GAUGE_RED_KEY_OFF]);
+-	gr_ubitmapm( SB_GAUGE_KEYS_X, SB_GAUGE_RED_KEY_Y, bm  );
+-
++	hud_bitblt( SB_GAUGE_KEYS_X, SB_GAUGE_RED_KEY_Y, bm, F1_0, 0  );
+ }
+ 
+ //	Draws invulnerable ship, or maybe the flashing ship, depending on invulnerability time left.
+@@ -2050,10 +2209,10 @@
+ 
+ 		if (Cockpit_mode == CM_STATUS_BAR)	{
+ 			PIGGY_PAGE_IN(Gauges[GAUGE_INVULNERABLE+invulnerable_frame]);
+-			gr_ubitmapm( SB_SHIELD_GAUGE_X, SB_SHIELD_GAUGE_Y, &GameBitmaps[Gauges[GAUGE_INVULNERABLE+invulnerable_frame].index] );
++			hud_bitblt( SB_SHIELD_GAUGE_X, SB_SHIELD_GAUGE_Y, &GameBitmaps[Gauges[GAUGE_INVULNERABLE+invulnerable_frame].index], F1_0, 0 );
+ 		} else {
+ 			PIGGY_PAGE_IN(Gauges[GAUGE_INVULNERABLE+invulnerable_frame]);
+-			gr_ubitmapm( SHIELD_GAUGE_X, SHIELD_GAUGE_Y, &GameBitmaps[Gauges[GAUGE_INVULNERABLE+invulnerable_frame].index] );
++			hud_bitblt( SHIELD_GAUGE_X, SHIELD_GAUGE_Y, &GameBitmaps[Gauges[GAUGE_INVULNERABLE+invulnerable_frame].index], F1_0, 0 );
+ 		}
+ 
+ 		time += FrameTime;
+@@ -2283,7 +2442,7 @@
+ 		x1 = GAME_FONT->ft_aw*7;//was 31;
+ #endif
+ 
+-	save_y = y = grd_curcanv->cv_h - n_left*(fth+1);
++	save_y = y = grd_curcanv->cv_h - n_left*(fth+(FPOS_SCALEY*1));
+ 
+ 	if (Cockpit_mode == CM_FULL_COCKPIT) {
+ 		save_y = y -= 6;
+@@ -2411,8 +2570,8 @@
+ 	if (Cockpit_mode==CM_STATUS_BAR){
+ 		//ogl needs to redraw every frame, at least currently.
+ //		init_cockpit();
+-//		last_drawn_cockpit[0]=-1;
+-//		last_drawn_cockpit[1]=-1;
++		last_drawn_cockpit[0]=-1;
++		last_drawn_cockpit[1]=-1;
+ 		  init_gauges();
+ 
+ //		vr_reset_display();
+@@ -2466,9 +2626,9 @@
+ 		gr_set_curfont( GAME_FONT );
+ 		gr_set_fontcolor(gr_getcolor(0,31,0),-1 );
+ 		if (Newdemo_state == ND_STATE_PLAYBACK)
+-			gr_printf(0x8000,grd_curcanv->cv_h-14,TXT_REAR_VIEW);
++			gr_printf(0x8000,grd_curcanv->cv_h-FPOS_SCALEY*14,TXT_REAR_VIEW);
+ 		else
+-			gr_printf(0x8000,grd_curcanv->cv_h-10,TXT_REAR_VIEW);
++			gr_printf(0x8000,grd_curcanv->cv_h-FPOS_SCALEY*10,TXT_REAR_VIEW);
+ 	}
+ 
+ }
+diff -urbB d1x/main/state.c ../d1x-rebirth_v0.42-src-20060416/main/state.c
+--- d1x/main/state.c	2000-10-27 01:58:45.000000000 +0200
++++ ../d1x-rebirth_v0.42-src-20060416/main/state.c	2006-03-26 12:51:56.000000000 +0200
+@@ -272,6 +290,9 @@
+ #include "strutil.h"
+ //end added
+ #include "gamefont.h"
++#ifdef OGL
++#include "ogl_init.h"
++#endif
+ 
+ 
+ #ifndef SHAREWARE
+@@ -702,6 +709,9 @@
+ 			}
+ 		} else {
+ 			render_frame(0);
++#ifdef OGL
++			ogl_ubitblt_tolinear(grd_curcanv->cv_bitmap.bm_w, grd_curcanv->cv_bitmap.bm_h, 0, 0, 0, 0, &grd_curscreen->sc_canvas.cv_bitmap, &grd_curcanv->cv_bitmap);
++#endif
+ 		}
+ 		fwrite( cnv->cv_bitmap.bm_data, THUMBNAIL_W*THUMBNAIL_H, 1, fp );
+ //added ifdef on 9/30/98 by Matt Mueller to fix savegames in linux
+@@ -958,9 +968,9 @@
+ 		do_briefing_screens(next_level);
+ 		fp = fopen( filename, "rb" );
+ 		fseek( fp, saved_offset, SEEK_SET );
+- 		StartNewLevelSub( next_level, 0 );		
++ 		StartNewLevelSub( next_level, 1);//use page_in_textures here to fix OGL texture precashing crash -MPM
+ 	} else {
+-		StartNewLevelSub(current_level, 0);		
++		StartNewLevelSub(current_level, 1);//use page_in_textures here to fix OGL texture precashing crash -MPM
+ 		fread( &Players[Player_num], sizeof(player), 1, fp );
+ 	}
+ 	strcpy( Players[Player_num].callsign, org_callsign );
+@@ -1123,7 +1133,7 @@
+ 	fclose(fp);
+ 
+ // Load in bitmaps, etc..
+-	piggy_load_level_data();
++//	piggy_load_level_data();//already used page_in_textures in StartNewLevelSub, so no need for this here. -MPM
+ 
+ 	return 1;
+ }
+diff -urbB d1x/main/titles.c ../d1x-rebirth_v0.42-src-20060416/main/titles.c
+--- d1x/main/titles.c	2006-08-19 11:33:19.000000000 +0200
++++ ../d1x-rebirth_v0.42-src-20060416/main/titles.c	2006-03-27 18:20:10.000000000 +0200
+@@ -436,7 +315,11 @@
+ vms_angvec	Robot_angles;
+ 
+ char	Bitmap_name[32] = "";
++#ifndef OGL
+ #define	EXIT_DOOR_MAX	14
++#else
++#define	EXIT_DOOR_MAX	0	// ZICO - removed door animation because broken in OGL
++#endif
+ #define	OTHER_THING_MAX	10		//	Adam: This is the number of frames in your new animating thing.
+ #define	DOOR_DIV_INIT	6
+ byte	Door_dir=1, Door_div_count=0, Animating_bitmap_type=0;

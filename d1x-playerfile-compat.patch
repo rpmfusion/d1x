@@ -1,0 +1,122 @@
+--- d1x/main/playsave.c.aap	2006-09-23 14:55:57.000000000 +0200
++++ d1x/main/playsave.c	2006-09-23 15:27:25.000000000 +0200
+@@ -1280,6 +1280,8 @@
+ 	FILE *file;
+ 	save_info info;
+ 	int errno_ret = EZERO;
++	int player_file_size;
++	int shareware_file = -1;
+ 
+ 	Assert(Player_num>=0 && Player_num<MAX_PLAYERS);
+ 
+@@ -1303,6 +1305,20 @@
+ 	if (!file) {
+ 		return errno;
+ 	}
++	
++	// Unfortunatly d1x has been writing both shareware and registered
++	// player files with a saved_game_version of 7 and 8, whereas the
++	// original decent used 4 for shareware games and 7 for registered
++	// games. Because of this the player files didn't get properly read
++	// when reading d1x shareware player files in d1x registered or
++	// vica versa. The problem is that the sizeof of the taunt macros
++	// differ between the share and registered versions, causing the
++	// reading of the player file to go wrong. Thus we now determine the
++	// sizeof the player file to determine what kinda player file we are
++	// dealing with so that we can do the right thing
++	fseek(file, 0, SEEK_END);
++	player_file_size = ftell(file);
++	rewind(file);
+ 
+ 	if (fread(&info,sizeof(info),1,file) != 1) {
+ 		errno_ret = errno;
+@@ -1321,6 +1337,50 @@
+ 		return -1;
+ 	}
+ 
++	/* determine if we're dealing with a shareware or registered playerfile */
++	switch (info.saved_game_version)
++	{
++		case 4:
++			shareware_file = 1;
++			break;
++		case 5:
++		case 6:
++			shareware_file = 0;
++			break;
++		case 7:
++			/* version 7 doesn't have the saved games array */
++			if (player_file_size == (2222 - sizeof(saved_games)))
++				shareware_file = 1;
++			if (player_file_size == (2262 - sizeof(saved_games)))
++				shareware_file = 0;
++			break;
++		case 8:
++			if (player_file_size == 2222)
++				shareware_file = 1;
++			if (player_file_size == 2262)
++				shareware_file = 0;
++			/* d1x-rebirth broke things by adding stuff to the
++			   player struct without thinking (sigh) */
++			if (player_file_size == (2222 + 2*sizeof(int)))
++			{
++				shareware_file = 1;
++				/* skip the cruft added to the player_info struct */
++				fseek(file, 2*sizeof(int), SEEK_CUR);
++			}
++			if (player_file_size == (2262 + 2*sizeof(int)))
++			{
++				shareware_file = 0;
++				/* skip the cruft added to the player_info struct */
++				fseek(file, 2*sizeof(int), SEEK_CUR);
++			}
++	}
++	
++	if (shareware_file == -1) {
++		nm_messagebox(TXT_ERROR, 1, TXT_OK, "Error invalid or unknown playerfile-size");
++		fclose(file);
++		return -1;
++	}
++	
+ 	if (info.saved_game_version <= 5) {
+ 
+ 		//deal with old-style highest level info
+@@ -1363,14 +1423,23 @@
+ 
+ 	//read taunt macros
+ 	{
+-		int i,len;
+-
+-		#ifdef SHAREWARE
+-		len = MAX_MESSAGE_LEN;
++		int i;
++		#if defined SHAREWARE && defined NETWORK
++		for (i = 0; i < 4; i++)
++		{
++			if (fread(Network_message_macro[i], MAX_MESSAGE_LEN, 1, file) != 1)
++				{errno_ret = errno; break;}
++			/* if this is not a shareware file, make sure what we've
++			   read is 0 terminated and skip the 10 additional bytes
++			   of the registered version */
++			if (!shareware_file)
++			{
++				Network_message_macro[i][MAX_MESSAGE_LEN-1] = 0;
++				fseek(file, 10, SEEK_CUR);
++			}
++		}
+ 		#else
+-		len = (info.saved_game_version == 4)?SHAREWARE_MAX_MESSAGE_LEN:MAX_MESSAGE_LEN;
+-		#endif
+-
++		int len = shareware_file? 25:35;
+ 		#ifdef NETWORK
+ 		for (i = 0; i < 4; i++)
+ 			if (fread(Network_message_macro[i], len, 1, file) != 1)
+@@ -1379,6 +1448,7 @@
+ 		i = 0;
+ 		fseek( file, 4*len, SEEK_CUR );
+ 		#endif
++		#endif
+ 	}
+ 
+ 
