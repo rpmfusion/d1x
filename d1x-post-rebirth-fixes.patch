@@ -1,7 +1,7 @@
-diff -ur d1x/main/game.c d1x.new/main/game.c
---- d1x/main/game.c	2006-08-22 07:37:31.000000000 +0200
-+++ d1x.new/main/game.c	2006-08-22 07:26:50.000000000 +0200
-@@ -552,7 +552,6 @@
+diff -up d1x/main/game.c.foo d1x/main/game.c
+--- d1x/main/game.c.foo	2008-07-23 15:33:30.000000000 +0200
++++ d1x/main/game.c	2008-07-23 15:34:07.000000000 +0200
+@@ -554,7 +554,6 @@ u_int32_t			VR_screen_mode		= 0;
  int			VR_render_width	= 0;
  int			VR_render_height	= 0;
  int			VR_render_mode		= VR_NONE;
@@ -9,7 +9,7 @@ diff -ur d1x/main/game.c d1x.new/main/game.c
  int			VR_low_res 			= 3;				// Default to low res
  int 			VR_show_hud = 1;
  int			VR_sensitivity     = 1;		// 0 - 2
-@@ -1109,16 +1108,15 @@
+@@ -1136,16 +1135,15 @@ void game_init_render_sub_buffers( int x
  
  
  // Sets up the canvases we will be rendering to
@@ -30,7 +30,7 @@ diff -ur d1x/main/game.c d1x.new/main/game.c
  
  		Game_window_w 		= render_w;
  		Game_window_h		= render_h;
-@@ -1181,12 +1179,6 @@
+@@ -1208,12 +1206,6 @@ void game_init_render_buffers(u_int32_t 
  int set_screen_mode(int sm)
  {
  stop_time();
@@ -43,7 +43,7 @@ diff -ur d1x/main/game.c d1x.new/main/game.c
  #ifdef EDITOR
  	if ( (sm==SCREEN_MENU) && (Screen_mode==SCREEN_EDITOR) )	{
  		gr_set_current_canvas( Canv_editor );
-@@ -1194,7 +1186,11 @@
+@@ -1221,7 +1213,11 @@ stop_time();
  	}
  #endif
  
@@ -54,12 +54,12 @@ diff -ur d1x/main/game.c d1x.new/main/game.c
 +		!((sm==SCREEN_MENU) &&
 +			(grd_curscreen->sc_mode != MENU_SCREEN_MODE)) ) {
  		gr_set_current_canvas( &VR_screen_pages[VR_current_page] );
+ //		if ( VR_use_paging )	gr_show_canvas( &VR_screen_pages[VR_current_page] );
  #ifdef OGL
- 		ogl_set_screen_mode();
-diff -ur d1x/main/game.h d1x.new/main/game.h
---- d1x/main/game.h	1999-11-21 14:00:08.000000000 +0100
-+++ d1x.new/main/game.h	2006-08-22 07:14:59.000000000 +0200
-@@ -435,7 +435,7 @@
+diff -up d1x/main/game.h.foo d1x/main/game.h
+--- d1x/main/game.h.foo	1999-11-21 14:00:08.000000000 +0100
++++ d1x/main/game.h	2008-07-23 15:34:07.000000000 +0200
+@@ -435,7 +435,7 @@ extern grs_canvas VR_screen_pages[2];	//
  extern grs_canvas VR_screen_sub_pages[2];	//  Two sub pages of VRAM if paging is available
  extern grs_canvas *VR_offscreen_menu;		// The offscreen data buffer for menus
  
@@ -68,10 +68,10 @@ diff -ur d1x/main/game.h d1x.new/main/game.h
  extern int maxfps;
  extern int use_nice_fps;
  extern int Allow_primary_cycle;
-diff -ur d1x/main/inferno.c d1x.new/main/inferno.c
---- d1x/main/inferno.c	2006-08-22 07:36:22.000000000 +0200
-+++ d1x.new/main/inferno.c	2006-08-22 07:14:48.000000000 +0200
-@@ -1329,13 +1329,9 @@
+diff -up d1x/main/inferno.c.foo d1x/main/inferno.c
+--- d1x/main/inferno.c.foo	2008-07-23 15:33:30.000000000 +0200
++++ d1x/main/inferno.c	2008-07-23 15:34:07.000000000 +0200
+@@ -1329,13 +1329,9 @@ int main(int argc,char **argv)
  //added on 12/14/98 by Matt Mueller - override res in d1x.ini with command line args
  		int i, argnum=INT_MAX;
  //end addition -MM
@@ -86,7 +86,7 @@ diff -ur d1x/main/inferno.c d1x.new/main/inferno.c
  //aren't #defines great? :)
  
  		SCREENMODE(320,100,0);
-@@ -1353,21 +1349,10 @@
+@@ -1353,21 +1349,10 @@ int main(int argc,char **argv)
  		SCREENMODE(1600,1200,0);
  //end addition -MM
  		
@@ -109,10 +109,10 @@ diff -ur d1x/main/inferno.c d1x.new/main/inferno.c
                  
  	}
  	{
-diff -ur d1x/main/menu.c d1x.new/main/menu.c
---- d1x/main/menu.c	2006-08-22 07:36:37.000000000 +0200
-+++ d1x.new/main/menu.c	2006-08-22 07:36:05.000000000 +0200
-@@ -226,12 +226,6 @@
+diff -up d1x/main/menu.c.foo d1x/main/menu.c
+--- d1x/main/menu.c.foo	2008-07-23 15:33:30.000000000 +0200
++++ d1x/main/menu.c	2008-07-23 15:34:07.000000000 +0200
+@@ -226,12 +226,6 @@ void create_main_menu(newmenu_item *m, i
  
  	set_screen_mode (SCREEN_MENU);
  	
@@ -125,7 +125,7 @@ diff -ur d1x/main/menu.c d1x.new/main/menu.c
  
  	ADD_ITEM(TXT_NEW_GAME,MENU_NEW_GAME,KEY_N);
  
-@@ -909,8 +903,6 @@
+@@ -909,8 +903,6 @@ void change_res()
  	u_int32_t modes[12];
  	int i = 0, mc = 0, num_presets = 0;
  	char customres[16];
@@ -134,7 +134,7 @@ diff -ur d1x/main/menu.c d1x.new/main/menu.c
  #ifdef GR_SUPPORTS_FULLSCREEN_TOGGLE
   int fullscreenc;
  #endif
-@@ -918,8 +910,6 @@
+@@ -918,8 +910,6 @@ void change_res()
   u_int32_t screen_mode = 0;
   int screen_width = 0;
   int screen_height = 0;
@@ -143,7 +143,7 @@ diff -ur d1x/main/menu.c d1x.new/main/menu.c
   
  	m[mc].type = NM_TYPE_RADIO; m[mc].text = "320x200"; m[mc].value = (Game_screen_mode == SM(320,200)); m[mc].group = 0; modes[mc] = SM(320,200); mc++;
  	m[mc].type = NM_TYPE_RADIO; m[mc].text = "640x480"; m[mc].value = (Game_screen_mode == SM(640,480)); m[mc].group = 0; modes[mc] = SM(640,480); mc++;
-@@ -980,18 +970,15 @@
+@@ -980,18 +970,15 @@ void change_res()
  	if (screen_height <= 0 || screen_width <= 0)
  		return;
  
@@ -169,7 +169,7 @@ diff -ur d1x/main/menu.c d1x.new/main/menu.c
          
  
          mprintf( (0, "\nInitializing palette system..." ));
-@@ -1005,7 +992,6 @@
+@@ -1005,7 +992,6 @@ void change_res()
    last_drawn_cockpit[0]=-1;
    last_drawn_cockpit[1]=-1;
     vr_reset_display();
@@ -177,10 +177,10 @@ diff -ur d1x/main/menu.c d1x.new/main/menu.c
  }
  
  
-diff -ur d1x/main/playsave.c d1x.new/main/playsave.c
---- d1x/main/playsave.c	2006-08-22 07:36:37.000000000 +0200
-+++ d1x.new/main/playsave.c	2006-08-22 07:29:46.000000000 +0200
-@@ -1394,10 +1394,19 @@
+diff -up d1x/main/playsave.c.foo d1x/main/playsave.c
+--- d1x/main/playsave.c.foo	2008-07-23 15:33:30.000000000 +0200
++++ d1x/main/playsave.c	2008-07-23 15:34:07.000000000 +0200
+@@ -1394,10 +1394,19 @@ int read_player_file()
  		kc_set_controls();
  	}
  

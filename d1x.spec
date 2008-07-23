@@ -45,6 +45,8 @@ Patch36:        d1x-store-res-in-plx.patch
 Patch37:        d1x-playerfile-compat.patch
 Patch38:        d1x-use-reg-save-in-sw.patch
 Patch39:        d1x-playerfile-compat-fix.patch
+# and patches added much later to keep things compiling with the latest gcc
+Patch40:        d1x-gcc43.patch
 URL:		http://d1x.warpcore.org/
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires:	SDL-devel >= 1.1
@@ -123,6 +125,8 @@ the game.
 %patch37 -p1
 %patch38 -p1
 %patch39 -p1
+
+%patch40 -p1
 
 
 %build

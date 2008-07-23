@@ -1,7 +1,7 @@
-diff -ur d1x.orig/main/game.c d1x/main/game.c
---- d1x.orig/main/game.c	2006-09-23 21:58:59.000000000 +0200
-+++ d1x/main/game.c	2006-09-23 21:08:43.000000000 +0200
-@@ -4001,16 +4001,8 @@
+diff -up d1x/main/game.c.foo d1x/main/game.c
+--- d1x/main/game.c.foo	2008-07-23 15:37:03.000000000 +0200
++++ d1x/main/game.c	2008-07-23 15:37:17.000000000 +0200
+@@ -4026,16 +4026,8 @@ void ReadControls()
  					Function_mode=FMODE_EXIT;
  					break;
  
@@ -18,10 +18,10 @@ diff -ur d1x.orig/main/game.c d1x/main/game.c
  
                                  //use function keys for window sizing
  
-diff -ur d1x.orig/main/menu.c d1x/main/menu.c
---- d1x.orig/main/menu.c	2006-09-23 21:58:49.000000000 +0200
-+++ d1x/main/menu.c	2006-09-23 21:54:24.000000000 +0200
-@@ -228,11 +228,6 @@
+diff -up d1x/main/menu.c.foo d1x/main/menu.c
+--- d1x/main/menu.c.foo	2008-07-23 15:37:03.000000000 +0200
++++ d1x/main/menu.c	2008-07-23 15:37:17.000000000 +0200
+@@ -228,11 +228,6 @@ void create_main_menu(newmenu_item *m, i
  	
  
  	ADD_ITEM(TXT_NEW_GAME,MENU_NEW_GAME,KEY_N);
@@ -33,7 +33,7 @@ diff -ur d1x.orig/main/menu.c d1x/main/menu.c
    	ADD_ITEM(TXT_LOAD_GAME,MENU_LOAD_GAME,KEY_L);
  
  #ifdef NETWORK
-@@ -342,11 +337,7 @@
+@@ -342,11 +337,7 @@ void do_option ( int select) 
  			}
  			break;
  		case MENU_LOAD_GAME:
@@ -45,10 +45,10 @@ diff -ur d1x.orig/main/menu.c d1x/main/menu.c
  			break;
  		#ifdef EDITOR
  		case MENU_EDITOR:
-diff -ur d1x.orig/main/playsave.c d1x/main/playsave.c
---- d1x.orig/main/playsave.c	2006-09-23 21:58:49.000000000 +0200
-+++ d1x/main/playsave.c	2006-09-23 22:04:50.000000000 +0200
-@@ -1474,9 +1474,8 @@
+diff -up d1x/main/playsave.c.foo d1x/main/playsave.c
+--- d1x/main/playsave.c.foo	2008-07-23 15:37:04.000000000 +0200
++++ d1x/main/playsave.c	2008-07-23 15:37:17.000000000 +0200
+@@ -1474,9 +1474,8 @@ int read_player_file()
  	if (fclose(file) && errno_ret==EZERO)
  		errno_ret = errno;
  
@@ -60,7 +60,7 @@ diff -ur d1x.orig/main/playsave.c d1x/main/playsave.c
  		
  		Assert( N_SAVE_SLOTS == 10 );
  
-@@ -1485,11 +1484,15 @@
+@@ -1485,11 +1484,15 @@ int read_player_file()
  				state_save_old_game(i, saved_games[i].name, &saved_games[i].player, 
               		saved_games[i].difficulty_level, saved_games[i].primary_weapon, 
            			saved_games[i].secondary_weapon, saved_games[i].next_level_num );
@@ -78,11 +78,11 @@ diff -ur d1x.orig/main/playsave.c d1x/main/playsave.c
  
  	filename[strlen(filename) - 4] = 0;
  	strcat(filename, ".plx");
-diff -ur d1x.orig/main/state.c d1x/main/state.c
---- d1x.orig/main/state.c	2006-09-23 21:58:59.000000000 +0200
-+++ d1x/main/state.c	2006-09-23 21:42:03.000000000 +0200
-@@ -277,8 +277,6 @@
- #endif
+diff -up d1x/main/state.c.foo d1x/main/state.c
+--- d1x/main/state.c.foo	2000-10-27 01:58:45.000000000 +0200
++++ d1x/main/state.c	2008-07-23 15:37:17.000000000 +0200
+@@ -274,8 +274,6 @@ static char rcsid[] = "$Id: state.c,v 1.
+ #include "gamefont.h"
  
  
 -#ifndef SHAREWARE
@@ -90,7 +90,7 @@ diff -ur d1x.orig/main/state.c d1x/main/state.c
  #define STATE_VERSION 7
  #define STATE_COMPATIBLE_VERSION 6
  // 0 - Put DGSS (Descent Game State Save) id at tof.
-@@ -351,6 +349,7 @@
+@@ -348,6 +346,7 @@ void state_callback(int nitems,newmenu_i
  //	}	
  }
  
@@ -98,7 +98,7 @@ diff -ur d1x.orig/main/state.c d1x/main/state.c
  void rpad_string( char * string, int max_chars )
  {
  	int i, end_found;
-@@ -365,6 +364,7 @@
+@@ -362,6 +361,7 @@ void rpad_string( char * string, int max
  	}
  	*string = 0;		// NULL terminate
  }
@@ -106,7 +106,7 @@ diff -ur d1x.orig/main/state.c d1x/main/state.c
  
  int state_get_save_file(char * fname, char * dsc, int multi )
  {
-@@ -580,8 +580,11 @@
+@@ -577,8 +577,11 @@ int state_save_old_game(int slotnum, cha
  	fwrite( &temp_int, sizeof(int), 1, fp );
  
  // Save the mission info...
@@ -119,7 +119,7 @@ diff -ur d1x.orig/main/state.c d1x/main/state.c
  //Save level info
  	temp_int = sg_player->level;
  	fwrite( &temp_int, sizeof(int), 1, fp );
-@@ -628,6 +631,7 @@
+@@ -625,6 +628,7 @@ int state_save_all(int between_levels)
  {
  	char filename[128], desc[DESC_LENGTH+1];
  
@@ -127,7 +127,7 @@ diff -ur d1x.orig/main/state.c d1x/main/state.c
  	if ( Game_mode & GM_MULTI )	{
  #ifdef MULTI_SAVE
  		if ( FindArg( "-multisave" ) )
-@@ -637,6 +641,7 @@
+@@ -634,6 +638,7 @@ int state_save_all(int between_levels)
  			hud_message( MSGC_GAME_FEEDBACK, "Can't save in a multiplayer game!" );
  		return 0;
  	}
@@ -135,7 +135,7 @@ diff -ur d1x.orig/main/state.c d1x/main/state.c
  
  	mprintf(( 0, "CL=%d, NL=%d\n", Current_level_num, Next_level_num ));
  	
-@@ -656,12 +661,14 @@
+@@ -653,12 +658,14 @@ int state_save_all_sub(char *filename, c
  	FILE * fp;
  	grs_canvas * cnv;
  
@@ -150,7 +150,7 @@ diff -ur d1x.orig/main/state.c d1x/main/state.c
  
  	fp = fopen( filename, "wb" );
  	if ( !fp ) {
-@@ -727,7 +734,11 @@
+@@ -721,7 +728,11 @@ int state_save_all_sub(char *filename, c
  	fwrite( &between_levels, sizeof(int), 1, fp );
  
  // Save the mission info...
@@ -162,7 +162,7 @@ diff -ur d1x.orig/main/state.c d1x/main/state.c
  
  //Save level info
  	fwrite( &Current_level_num, sizeof(int), 1, fp );
-@@ -927,15 +938,32 @@
+@@ -921,15 +932,32 @@ int state_restore_all_sub(char *filename
  // Read the mission info...
  	fread( mission, sizeof(char)*9, 1, fp );
  
@@ -195,7 +195,7 @@ diff -ur d1x.orig/main/state.c d1x/main/state.c
  
  //Restore GameTime
  	fread( &GameTime, sizeof(fix), 1, fp );
-@@ -1133,6 +1161,3 @@
+@@ -1127,6 +1155,3 @@ RetryObjectLoading:
  
  	return 1;
  }
