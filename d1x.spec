@@ -1,7 +1,7 @@
 Summary:	Modified version of Descent 1
 Name:		d1x
 Version:	1.43
-Release:	5%{?dist}
+Release:	6%{?dist}
 License:	non-commercial
 Group:		Amusements/Games
 Source0:	http://home.zonnet.nl/jwrdegoede/d1x143sc.tar.bz2
@@ -212,6 +212,9 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Wed Jul 23 2008 Hans de Goede <j.w.r.degoede@hhs.nl> 1.43-6
+- Release bump for rpmfusion build
+
 * Sat Oct 14 2006 Hans de Goede <j.w.r.degoede@hhs.nl> 1.43-5
 - Fix reading of player file (playerfile compat code) when using addon missions
 
