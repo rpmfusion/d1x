@@ -1,0 +1,213 @@
+diff -urbB d1x/arch/sdl/digi.c ../d1x-rebirth_v0.42-src-20060416/arch/sdl/digi.c
+--- d1x/arch/sdl/digi.c	2006-08-19 11:33:19.000000000 +0200
++++ ../d1x-rebirth_v0.42-src-20060416/arch/sdl/digi.c	2006-03-26 12:52:05.000000000 +0200
+@@ -684,7 +684,7 @@
+ 			}
+ 			 
+ 			if (oldvolume != SoundObjects[i].volume) 	{
+-				if ( SoundObjects[i].volume < MIN_VOLUME )	 {
++				if ( SoundObjects[i].volume < MIN_VOLUME || Function_mode == FMODE_MENU)	 {
+ 					// Sound is too far away, so stop it from playing.
+ 					if ((SoundObjects[i].flags & SOF_PLAYING)&&(SoundObjects[i].flags & SOF_PLAY_FOREVER))	{
+                                         	SoundSlots[SoundObjects[i].handle].playing = 0;
+diff -urbB d1x/arch/sdl/gr.c ../d1x-rebirth_v0.42-src-20060416/arch/sdl/gr.c
+--- d1x/arch/sdl/gr.c	1999-11-21 14:00:09.000000000 +0100
++++ ../d1x-rebirth_v0.42-src-20060416/arch/sdl/gr.c	2006-04-08 21:44:42.000000000 +0200
+@@ -151,7 +156,8 @@
+ 	memset( grd_curscreen, 0, sizeof(grs_screen));
+ 
+ //added 10/05/98 by Matt Mueller - make fullscreen mode optional
+-	if (FindArg("-fullscreen"))
++//	if (FindArg("-fullscreen"))
++	if (!(FindArg("-window"))) // ZICO - from window to fullscreen
+ 	     sdl_video_flags|=SDL_FULLSCREEN;
+ //end addition -MM
+ 	//added 05/19/99 Matt Mueller - make HW surface optional
+diff -urbB d1x/main/game.c ../d1x-rebirth_v0.42-src-20060416/main/game.c
+--- d1x/main/game.c	2006-08-19 11:33:19.000000000 +0200
++++ ../d1x-rebirth_v0.42-src-20060416/main/game.c	2006-03-27 20:36:31.000000000 +0200
+@@ -488,6 +488,10 @@
+ int I_am_observer = 0;
+ //end this section addition - VR
+ 
++#ifdef __LINUX__
++#include "SDL/SDL.h"
++#endif
++
+ //added 8/23/99 by Matt Mueller for hot key res/fullscreen changing, and menu access
+ extern void change_res();
+ extern void d1x_options_menu();
+@@ -1203,6 +809,7 @@
+ //mode if cannot init requested mode)
+ int set_screen_mode(int sm)
+ {
++stop_time();
+ #ifndef OGL //ogl needs Screen_mode set correctly, or menus do not work.
+ 	if ( (sm==SCREEN_MENU) && (Screen_mode==SCREEN_GAME) && VR_compatible_menus )	{
+ 		sm = SCREEN_GAME;
+@@ -1239,6 +845,10 @@
+ 		}
+                 gr_init_sub_canvas( &VR_screen_pages[0], &grd_curscreen->sc_canvas, 0, 0, grd_curscreen->sc_w, grd_curscreen->sc_h );
+ 		gr_init_sub_canvas( &VR_screen_pages[1], &grd_curscreen->sc_canvas, 0, 0, grd_curscreen->sc_w, grd_curscreen->sc_h );
++#ifdef __LINUX__
++	if (FindArg("-grabmouse"))
++		SDL_WM_GrabInput(SDL_GRAB_OFF);
++#endif
+ 		break;
+ 	case SCREEN_GAME:
+ 		if (grd_curscreen->sc_mode != VR_screen_mode)
+@@ -1290,6 +909,10 @@
+ 		else
+ 			gr_init_sub_canvas( &VR_screen_pages[1], game_canvas, 0, 0, grd_curscreen->sc_w, grd_curscreen->sc_h );
+ }
++#ifdef __LINUX__
++	if (FindArg("-grabmouse"))
++		SDL_WM_GrabInput(SDL_GRAB_ON);
++#endif
+ 		break;
+ 	#ifdef EDITOR
+ 	case SCREEN_EDITOR:
+@@ -1529,7 +1144,7 @@
+ int maxfps=80;
+ //end this section
+ //added on 9/2/98 by Victor Rachels to add option to free cpu time
+-int use_nice_fps=0;
++int use_nice_fps=1; // ZICO - changed to be default
+ //end this section
+ 
+ void calc_frame_time()
+diff -urbB d1x/main/key.c ../d1x-rebirth_v0.42-src-20060416/main/key.c
+--- d1x/main/key.c	2000-01-18 05:01:23.000000000 +0100
++++ ../d1x-rebirth_v0.42-src-20060416/main/key.c	2006-03-26 12:51:56.000000000 +0200
+@@ -92,7 +92,7 @@
+ 	{ "[",      '[',    '{',    ARCH_KEY_LBRACKET      },
+ 	{ "]",      ']',    '}',    ARCH_KEY_RBRACKET      },
+ 	//edited 06/08/99 Matt Mueller - set to correct key_text
+-	{ "ƒ",      255,    255,    ARCH_KEY_ENTER         },
++	{ "ENTER",  255,    255,    ARCH_KEY_ENTER         },
+ 	//end edit -MM
+ 	{ "LCTRL",  255,    255,    ARCH_KEY_LCTRL         },
+ 	{ "A",      'a',    'A',    ARCH_KEY_A             },
+@@ -230,7 +230,7 @@
+ 	{ "",       255,    255,    -1                     },
+ 	{ "",       255,    255,    -1                     },
+ 	//edited 06/08/99 Matt Mueller - set to correct key_text
+-	{ "PADƒ",   255,    255,    ARCH_KEY_PADENTER      },
++	{ "PADENT", 255,    255,    ARCH_KEY_PADENTER      },
+ 	//end edit -MM
+ 	//edited 06/08/99 Matt Mueller - set to correct sym
+ 	{ "RCTRL",  255,    255,    ARCH_KEY_RCTRL         },
+diff -urbB d1x/main/kconfig.c ../d1x-rebirth_v0.42-src-20060416/main/kconfig.c
+--- d1x/main/kconfig.c	2000-10-27 06:08:33.000000000 +0200
++++ ../d1x-rebirth_v0.42-src-20060416/main/kconfig.c	2006-03-26 12:51:56.000000000 +0200
+@@ -2527,10 +2537,12 @@
+ 	if ( (use_mouse)&&(kc_mouse[3].value < 255 )) Controls.forward_thrust_time -= mouse_button_down_time( kc_mouse[3].value );
+ 
+ //----------- Read fire_primary_down_count
++	if (!Global_laser_firing_count) { // ZICO - prevets primary counts if energy is 0 ansd lasers go wild while recharge - VERY DIRTY HACK
+         if (kc_keyboard[24].value < 255 ) Controls.fire_primary_down_count += key_down_count(kc_keyboard[24].value);
+         if (kc_keyboard[25].value < 255 ) Controls.fire_primary_down_count += key_down_count(kc_keyboard[25].value);
+         if ((use_joystick)&&(kc_joystick[0].value < 255 )) Controls.fire_primary_down_count += joy_get_button_down_cnt(kc_joystick[0].value);
+         if ((use_mouse)&&(kc_mouse[0].value < 255 )) Controls.fire_primary_down_count += mouse_button_down_count(kc_mouse[0].value);
++	}
+ 
+        #ifdef NETWORK
+         if(use_alt_vulcanfire)
+@@ -2563,10 +2575,12 @@
+        #endif
+ 
+ //----------- Read fire_primary_state
++	if (!Global_laser_firing_count) { // ZICO - prevets primary counts if energy is 0 ansd lasers go wild while recharge - VERY DIRTY HACK
+ 	if (kc_keyboard[24].value < 255 ) Controls.fire_primary_state |= keyd_pressed[kc_keyboard[24].value];
+ 	if (kc_keyboard[25].value < 255 ) Controls.fire_primary_state |= keyd_pressed[kc_keyboard[25].value];
+ 	if ((use_joystick)&&(kc_joystick[0].value < 255 )) Controls.fire_primary_state |= joy_get_button_state(kc_joystick[0].value);
+ 	if ((use_mouse)&&(kc_mouse[0].value < 255) ) Controls.fire_primary_state |= mouse_button_state(kc_mouse[0].value);
++	}
+ 
+ //----------- Read fire_secondary_down_count
+ 	if (kc_keyboard[26].value < 255 ) Controls.fire_secondary_down_count += key_down_count(kc_keyboard[26].value);
+diff -urbB d1x/main/menu.c ../d1x-rebirth_v0.42-src-20060416/main/menu.c
+--- d1x/main/menu.c	2000-03-06 02:42:10.000000000 +0100
++++ ../d1x-rebirth_v0.42-src-20060416/main/menu.c	2006-04-14 23:18:24.000000000 +0200
+@@ -1279,7 +1247,7 @@
+ #ifdef __LINUX__
+ 		ADD_ITEM("Kalinix", MENU_KALI_MULTIPLAYER, -1 );
+ #endif
+-		ADD_ITEM(TXT_MODEM_GAME, MENU_START_SERIAL, -1);
++//		ADD_ITEM(TXT_MODEM_GAME, MENU_START_SERIAL, -1); // ZICO - outdated
+ 
+ 		choice = newmenu_do1( NULL, TXT_MULTIPLAYER, num_options, m, NULL, choice );
+ 		
+@@ -1365,7 +1333,7 @@
+ 
+ 		m[num_options].type = NM_TYPE_INPUT; m[num_options].text=buf; m[num_options].text_len=128;menu_choice[num_options]=-1; num_options++;
+ 
+-		choice = newmenu_do1( NULL, TXT_MULTIPLAYER, num_options, m, NULL, choice );
++		choice = newmenu_do1( NULL, "ENTER IP OR HOSTNAME", num_options, m, NULL, choice );
+ 
+ 		if ( choice > -1 ){
+ 			ip_connect_manual(buf);
+@@ -1418,7 +1386,7 @@
+ 		old_game_mode = Game_mode;
+ 		num_options = 0;
+ 
+-		ADD_ITEM("Connect to game list server",MENU_IP_SERV_CONNECT, -1 );
++//		ADD_ITEM("Connect to game list server",MENU_IP_SERV_CONNECT, -1 );
+ 		ADD_ITEM(TXT_START_NET_GAME, MENU_START_NETGAME, -1 );
+ 		ADD_ITEM(TXT_JOIN_NET_GAME, MENU_MANUAL_IP_JOIN, -1 );
+ 
+diff -urbB d1x/main/mission.h ../d1x-rebirth_v0.42-src-20060416/main/mission.h
+--- d1x/main/mission.h	1999-06-15 00:12:36.000000000 +0200
++++ ../d1x-rebirth_v0.42-src-20060416/main/mission.h	2006-03-26 12:51:56.000000000 +0200
+@@ -53,7 +56,7 @@
+ 
+ #include <types.h>
+ 
+-#define MAX_MISSIONS                  100
++#define MAX_MISSIONS                 5000 // ZICO - changed from 100 to get more levels in list
+ #define MAX_LEVELS_PER_MISSION         30
+ #define MAX_SECRET_LEVELS_PER_MISSION   5
+ #define MISSION_NAME_LEN               21
+diff -urbB d1x/main/newmenu.h ../d1x-rebirth_v0.42-src-20060416/main/newmenu.h
+--- d1x/main/newmenu.h	1999-06-15 00:12:48.000000000 +0200
++++ ../d1x-rebirth_v0.42-src-20060416/main/newmenu.h	2006-04-05 21:27:45.000000000 +0200
+@@ -125,7 +128,7 @@
+ #define NM_TYPE_INPUT_MENU	6		// A inputbox that you hit Enter to edit, when done, hit enter and menu leaves.
+ #define NM_TYPE_SLIDER	7		// A slider from min_value to max_value. Draws with text_len chars.
+ 
+-#define NM_MAX_TEXT_LEN	50
++#define NM_MAX_TEXT_LEN	255
+ 
+ typedef struct newmenu_item {
+ 	int 	type;				// What kind of item this is, see NM_TYPE_????? defines
+diff -urbB d1x/main/physics.c ../d1x-rebirth_v0.42-src-20060416/main/physics.c
+--- d1x/main/physics.c	2006-08-19 11:33:19.000000000 +0200
++++ ../d1x-rebirth_v0.42-src-20060416/main/physics.c	2006-03-26 12:51:56.000000000 +0200
+@@ -603,7 +343,9 @@
+ 	physics_info *pi;
+ 	int orig_segnum = obj->segnum;
+ 
++	if (!Player_is_dead)			// ZICO - object can be none if player is dead
+ 	Assert(obj->type != OBJ_NONE);
++
+ 	Assert(obj->movement_type == MT_PHYSICS);
+ 
+ #ifndef NDEBUG
+diff -urbB d1x/main/automap.c ../d1x-rebirth_v0.42-src-20060416/main/automap.c
+--- d1x/main/automap.c	1999-11-21 14:00:08.000000000 +0100
++++ ../d1x-rebirth_v0.42-src-20060416/main/automap.c	2006-03-26 12:51:56.000000000 +0200
+@@ -390,8 +390,12 @@
+ u_int32_t automap_mode = SM(640,480);
+ int automap_width = 640;
+ int automap_height = 480;
+-int automap_use_game_res=0;
+-int nice_automap=0;
++#ifdef OGL
++int automap_use_game_res=1; // ZICO - should be better
++#else
++int automap_use_game_res=0;
++#endif
++int nice_automap=1; // ZICO - should be better (command-line switches deactivated)
+ 
+ void do_automap( int key_code )	{
+ 	int done=0;

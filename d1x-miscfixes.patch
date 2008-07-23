@@ -1,0 +1,279 @@
+--- d1x/main/inferno.c.miscfixes	2000-04-22 00:15:34.000000000 +0200
++++ d1x/main/inferno.c	2005-08-06 10:38:22.000000000 +0200
+@@ -845,6 +845,9 @@
+ #ifdef SCRIPT
+ #include "script.h"
+ #endif
++#ifdef OGL
++#include "ogl_init.h"
++#endif
+ 
+ void check_joystick_calibration();
+ void show_order_form();
+@@ -1142,7 +1145,7 @@
+ 	if ((t = FindArg( "-missiondir" )))
+ 		cfile_use_alternate_hogdir(Args[t+1]);
+         else
+-                cfile_use_alternate_hogdir("");
++                cfile_use_alternate_hogdir(D1XDATAPATH);
+ 
+ 	if ((t=FindArg("-tmap"))){
+ 		select_tmap(Args[t+1]);
+@@ -1399,6 +1402,15 @@
+ 	// Load the palette stuff. Returns non-zero if error.
+ 	mprintf( (0, "Going into graphics mode..." ));
+ 	gr_set_mode(MENU_SCREEN_MODE);
++#ifdef OGL
++	/* hack to fix initial screens with ogl */
++	{
++ 		int old_screen_mode = Screen_mode;
++		Screen_mode = MENU_SCREEN_MODE;
++		ogl_set_screen_mode();
++		Screen_mode = old_screen_mode;
++	}
++#endif	
+ 	mprintf( (0, "\nInitializing palette system..." ));
+ 	gr_use_palette_table( "PALETTE.256" );
+ 	mprintf( (0, "\nInitializing font system..." ));
+--- d1x/main/fvi.c.miscfixes	2000-06-25 10:34:29.000000000 +0200
++++ d1x/main/fvi.c	2005-08-06 10:38:22.000000000 +0200
+@@ -1036,7 +1036,7 @@
+ 	int centermask;			//where the center point is
+ 	int objnum;
+ 	segmasks masks;
+-	vms_vector hit_point,closest_hit_point; 	//where we hit
++	vms_vector hit_point,closest_hit_point = { 0, 0, 0 }; 	//where we hit
+ 	fix d,closest_d=0x7fffffff;					//distance to hit point
+ 	int hit_type=HIT_NONE;							//what sort of hit
+ 	int hit_seg=-1;
+--- d1x/main/network.c.miscfixes	2000-02-07 11:26:05.000000000 +0100
++++ d1x/main/network.c	2005-08-06 10:38:22.000000000 +0200
+@@ -2161,7 +2161,7 @@
+         //added on 10/18/98 by Victor Rachels to add multiplayer profiles
+         int multivalues[40];
+ 
+-        memset(&multivalues,0,sizeof(int *) * 40);
++        memset(multivalues,0,sizeof(int) * 40);
+         //end this section addition - Victor
+ 
+ #ifndef SHAREWARE
+--- d1x/main/game.c.miscfixes	2005-08-06 10:38:22.000000000 +0200
++++ d1x/main/game.c	2005-08-06 10:38:22.000000000 +0200
+@@ -3489,7 +3489,7 @@
+ 			#ifndef I_AM_NOT_A_CHEATER_BUT_MY_KEYBOARD_THINKS_I_PRESS_DEL
+ 			if ((key&KEY_DEBUGGED)&&(Game_mode&GM_MULTI))	{
+ 				Network_message_reciever = 100;		// Send to everyone...
+-				sprintf( Network_message, "%s %s", TXT_I_AM_A, TXT_CHEATER);
++				snprintf( Network_message, MAX_MESSAGE_LEN, "%s %s", TXT_I_AM_A, TXT_CHEATER);
+ 			}
+ 			#endif
+ 			#endif
+@@ -4165,7 +4165,7 @@
+ //						if ( Game_mode & GM_MULTI )	{
+ //							nm_messagebox( NULL, 1, "Damn", "CHEATER!\nYou cannot use the\nmega-thing in network mode." );
+ //							Network_message_reciever = 100;		// Send to everyone...
+-//							sprintf( Network_message, "%s cheated!", Players[Player_num].callsign);
++//							snprintf( Network_message, MAX_MESSAGE_LEN, "%s cheated!", Players[Player_num].callsign);
+ //						} else {
+ //							do_megawow_powerup();
+ //						}
+--- d1x/main/command.c.miscfixes	1999-10-08 00:40:29.000000000 +0200
++++ d1x/main/command.c	2005-08-06 10:38:22.000000000 +0200
+@@ -112,7 +112,7 @@
+         {
+           handicap = MAX_SHIELDS;
+           Network_message_reciever = 100;
+-          sprintf(Network_message,"I am no longer handicapped.");
++          snprintf(Network_message, MAX_MESSAGE_LEN, "I am no longer handicapped.");
+           hud_message(MSGC_GAME_FEEDBACK, "Handicap reset. Other players notified");
+           multi_send_message();
+           multi_message_feedback();
+@@ -126,7 +126,7 @@
+             else
+              Lhandicap = 0;
+            Network_message_reciever = 100;
+-           sprintf(Network_message,"I am using a handicap of %i.",t);
++           snprintf(Network_message, MAX_MESSAGE_LEN, "I am using a handicap of %i.",t);
+            hud_message(MSGC_GAME_FEEDBACK, "Handicap set. Other players notified");
+            multi_send_message();
+            multi_message_feedback();
+@@ -137,7 +137,7 @@
+             if(Lhandicap)
+              {
+                Network_message_reciever = 100;
+-               sprintf(Network_message,"I am using handicap of %i.",t);
++               snprintf(Network_message, MAX_MESSAGE_LEN, "I am using handicap of %i.",t);
+                hud_message(MSGC_GAME_FEEDBACK, "Handicap set. Other players notified");
+                multi_send_message();
+                multi_message_feedback();
+@@ -147,11 +147,11 @@
+               int netmaster=network_whois_master();
+                hud_message(MSGC_GAME_FEEDBACK, "Master permission required. Requesting...");
+                Network_message_reciever = netmaster;
+-               sprintf(Network_message,"%s requests handicap of %i",Players[Player_num].callsign,t);
++               snprintf(Network_message, MAX_MESSAGE_LEN, "%s requests handicap of %i",Players[Player_num].callsign,t);
+                multi_send_message();
+                multi_message_feedback();
+                Network_message_reciever = netmaster;
+-               sprintf(Network_message,"Send %s:handicap %i to allow",Players[Player_num].callsign,t);
++               snprintf(Network_message, MAX_MESSAGE_LEN, "Send %s:handicap %i to allow",Players[Player_num].callsign,t);
+                multi_send_message();
+                multi_message_feedback();
+              }
+--- d1x/main/nncoms.c.miscfixes	1999-10-14 06:48:20.000000000 +0200
++++ d1x/main/nncoms.c	2005-08-06 10:38:22.000000000 +0200
+@@ -51,7 +51,7 @@
+               hud_message(MSGC_GAME_FEEDBACK,"You cannot kick players! You are not master!");
+               strcpy(name, bootname);
+               Network_message_reciever = 100;         // Let everyone know that I'm trying to kick someone, but am not master...
+-              sprintf( Network_message, "I'm trying to kick %s!", name);
++              snprintf( Network_message, MAX_MESSAGE_LEN, "I'm trying to kick %s!", name);
+               multi_send_message();
+               return;
+         }
+@@ -100,7 +100,7 @@
+         {
+                 hud_message(MSGC_GAME_FEEDBACK,"You cannot kick players! You are not master!");
+                 Network_message_reciever = 100;         // Let everyone know that I'm trying to kick someone, but am not master...
+-                sprintf( Network_message, "I'm trying to kick %s!", Players[player_list[bootnum - 1]].callsign);
++                snprintf( Network_message, MAX_MESSAGE_LEN, "I'm trying to kick %s!", Players[player_list[bootnum - 1]].callsign);
+                 multi_send_message();
+                 return;
+         }
+--- d1x/main/gamefont.c.miscfixes	1999-11-20 11:05:17.000000000 +0100
++++ d1x/main/gamefont.c	2005-08-06 10:40:36.000000000 +0200
+@@ -200,11 +200,13 @@
+ 	for (i=0;i<MAX_FONTS;i++){
+ 		Gamefonts[i]=NULL;
+ 		addfontconf(i,0,Gamefont_filenames_l[i]);
+-		addfontconf(i,640,Gamefont_filenames_h[i]);
++		// HDG: commented, these files are not available in the normal
++		// d1data files since they are d2 files
++		// addfontconf(i,640,Gamefont_filenames_h[i]);
+ 	}
+-
+-//	addfontconf(640,"pc6x8.fnt");
+-//	addfontconf(1024,"pc8x16.fnt");
++	// HDG: uncommented, these addon files can be easily added
++	addfontconf(4, 640,"pc6x8.fnt");
++	addfontconf(4, 1024,"pc8x16.fnt");
+ 	if ((i=FindArg("-font320")))
+ 		addfontconf(4,320,Args[i+1]);
+ 	if ((i=FindArg("-font640")))
+--- d1x/main/newmenu.c.miscfixes	2005-08-06 10:38:22.000000000 +0200
++++ d1x/main/newmenu.c	2005-08-06 10:38:22.000000000 +0200
+@@ -862,14 +862,14 @@
+ 		nm_string( b, item->w, item->x, item->y, item->text );
+ 		break;
+ 	case NM_TYPE_SLIDER:	{
+-		int j;
++		int i,j;
+ 		if (item->value < item->min_value) item->value=item->min_value;
+ 		if (item->value > item->max_value) item->value=item->max_value;
+-		sprintf( item->saved_text, "%s\t%s", item->text, SLIDER_LEFT );
++		i = sprintf( item->saved_text, "%s\t%s", item->text, SLIDER_LEFT );
+ 		for (j=0; j<(item->max_value-item->min_value+1); j++ )	{
+-			sprintf( item->saved_text, "%s%s", item->saved_text,SLIDER_MIDDLE );
++			i += sprintf( item->saved_text + i, "%s", SLIDER_MIDDLE );
+ 		}
+-		sprintf( item->saved_text, "%s%s", item->saved_text,SLIDER_RIGHT );
++		sprintf( item->saved_text + i, "%s", SLIDER_RIGHT );
+ 		
+ 		item->saved_text[item->value+1+strlen(item->text)+1] = SLIDER_MARKER[0];
+ 		
+@@ -1036,13 +1036,13 @@
+ 		item[i].saved_text[0] = '\0';
+ 
+ 		if ( item[i].type == NM_TYPE_SLIDER )	{
+-			int w1,h1,aw1;
++			int index,w1,h1,aw1;
+ 			nothers++;
+-			sprintf( item[i].saved_text, "%s", SLIDER_LEFT );
++			index = sprintf( item[i].saved_text, "%s", SLIDER_LEFT );
+ 			for (j=0; j<(item[i].max_value-item[i].min_value+1); j++ )	{
+-				sprintf( item[i].saved_text, "%s%s", item[i].saved_text,SLIDER_MIDDLE );
++				index+= sprintf( item[i].saved_text + index, "%s", SLIDER_MIDDLE );
+ 			}
+-			sprintf( item[i].saved_text, "%s%s", item[i].saved_text,SLIDER_RIGHT );
++			sprintf( item[i].saved_text + index, "%s", SLIDER_RIGHT );
+ 			gr_get_string_size(item[i].saved_text,&w1,&h1,&aw1 );
+ 			string_width += w1 + aw;
+ 		}
+--- d1x/main/multi.c.miscfixes	1999-11-30 07:11:11.000000000 +0100
++++ d1x/main/multi.c	2005-08-06 10:38:22.000000000 +0200
+@@ -1270,7 +1270,7 @@
+ 		return;
+ 	}
+ 
+-	strcpy(Network_message, Network_message_macro[key]);
++	snprintf(Network_message, MAX_MESSAGE_LEN, "%s", Network_message_macro[key]);
+ 
+ //added/replaced on 11/10/98 by Victor Rachels to make macros act like normal msgs
+         multi_send_message_end();
+@@ -1305,7 +1305,7 @@
+ 
+ void mekh_resend_last()
+ {
+-        strcpy(Network_message, &mekh_msg_last_sent[0]);
++        snprintf(Network_message, MAX_MESSAGE_LEN, "%s", mekh_msg_last_sent);
+         multi_send_message_end();
+ };
+ //======================================================
+@@ -1806,7 +1806,7 @@
+                Lhandicap = 0;
+              hud_message(MSGC_GAME_FEEDBACK, "Handicap set to %i by game master",t);
+              Network_message_reciever = 100;
+-             sprintf(Network_message,"Handicap set to %i by game master.",t);
++             snprintf(Network_message, MAX_MESSAGE_LEN, "Handicap set to %i by game master.",t);
+              multi_send_message();
+              multi_message_feedback();
+             }
+@@ -1840,7 +1840,7 @@
+                            multi_send_data(multibuf,message_length[MULTI_MESSAGE],1);
+                           }
+ //                         Network_message_reciever = buf[1];  // Send to the player who pinged you
+-//                         sprintf(Network_message, "pong:%s", colon + 1);
++//                         snprintf(Network_message, MAX_MESSAGE_LEN, "pong:%s", colon + 1);
+                          
+ 		}
+ 		if (!strncasecmp("pong", buf+loc, 4))
+--- d1x/main/ban.c.miscfixes	1999-06-15 01:44:11.000000000 +0200
++++ d1x/main/ban.c	2005-08-06 10:38:22.000000000 +0200
+@@ -40,7 +40,7 @@
+     {
+       hud_message(MSGC_GAME_FEEDBACK,"You cannot ban players! You are not master!");
+       Network_message_reciever=100;
+-      sprintf( Network_message, "I'm trying to ban %s!", banname);
++      snprintf( Network_message, MAX_MESSAGE_LEN, "I'm trying to ban %s!", banname);
+       multi_send_message();
+       return;
+     }
+@@ -107,7 +107,7 @@
+     {
+       hud_message(MSGC_GAME_FEEDBACK,"You cannot ban players. You are not master");
+       Network_message_reciever=100;
+-      sprintf( Network_message, "I'm trying to ban %s!", Players[pl].callsign);
++      snprintf( Network_message, MAX_MESSAGE_LEN, "I'm trying to ban %s!", Players[pl].callsign);
+       multi_send_message();
+       return;
+     }
+--- d1x/main/ignore.c.miscfixes	1999-06-15 01:44:12.000000000 +0200
++++ d1x/main/ignore.c	2005-08-06 10:38:22.000000000 +0200
+@@ -54,7 +54,7 @@
+                                         hud_message(MSGC_GAME_FEEDBACK,"Now ignoring %s!", ignorename);
+                                         strcpy(name, ignorename);
+                                         Network_message_reciever = 100; // Let everyone know that I'm ignoring someone...
+-                                        sprintf( Network_message, "I'm now ignoring %s!", name);
++                                        snprintf( Network_message, MAX_MESSAGE_LEN, "I'm now ignoring %s!", name);
+                                         multi_send_message();
+ 
+                                         network_disconnect_player(iPlayerLoop);
+@@ -107,7 +107,7 @@
+                         strcpy(ignorelist[ignoreloop], Players[player_list[ignorenum - 1]].callsign);
+                         hud_message(MSGC_GAME_FEEDBACK,"Now ignoring %s!", Players[player_list[ignorenum - 1]].callsign);
+                         Network_message_reciever = 100; // Let everyone know that I'm ignoring someone...
+-                        sprintf( Network_message, "I'm now ignoring %s!", Players[player_list[ignorenum - 1]].callsign);
++                        snprintf( Network_message, MAX_MESSAGE_LEN, "I'm now ignoring %s!", Players[player_list[ignorenum - 1]].callsign);
+                         multi_send_message();
+ 
+                         network_disconnect_player(player_list[ignorenum - 1]);

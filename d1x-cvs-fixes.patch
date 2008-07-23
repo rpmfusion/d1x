@@ -1,0 +1,732 @@
+--- d1x/include/d_glob.h.cvs-fixes	2005-01-06 19:50:58.276099128 +0100
++++ d1x/include/d_glob.h	2005-01-06 19:51:02.949388680 +0100
+@@ -4,7 +4,12 @@
+ #define _D_GLOB
+ 
+ #include <stdlib.h>
+-
++#if defined(__DJGPP__) || defined(__LINUX__)
++#include <glob.h>
++typedef glob_t d_glob_t;
++#define d_glob(p,g) glob(p,0,NULL,g)
++#define d_globfree(g) globfree(g)
++#else
+ typedef struct
+   {
+     size_t gl_pathc;
+@@ -14,5 +19,6 @@
+ 
+ int d_glob (const char *pattern, d_glob_t * g);
+ void d_globfree (d_glob_t * g);
++#endif
+ 
+ #endif
+--- d1x/include/gr.h.cvs-fixes	2005-01-06 19:50:58.279098672 +0100
++++ d1x/include/gr.h	2005-01-06 19:51:02.950388528 +0100
+@@ -760,4 +760,4 @@
+ int gr_toggle_fullscreen_menu(void);//returns state after toggling (ie, same as if you had called check_fullscreen immediatly after)
+ 
+ //make this a define, since its used in several places
+-#define KEYS_GR_TOGGLE_FULLSCREEN KEY_CTRLED+KEY_SHIFTED+KEY_PADENTER: case KEY_ALTED+KEY_CTRLED+KEY_PADENTER: case KEY_ALTED+KEY_SHIFTED+KEY_PADENTER
++#define KEYS_GR_TOGGLE_FULLSCREEN KEY_CTRLED+KEY_SHIFTED+KEY_PADENTER: case KEY_ALTED+KEY_CTRLED+KEY_PADENTER: case KEY_ALTED+KEY_SHIFTED+KEY_PADENTER: case KEY_ALTED+KEY_ENTER
+--- d1x/misc/d_glob.c.cvs-fixes	2005-01-06 19:50:58.320092440 +0100
++++ d1x/misc/d_glob.c	2005-01-06 19:51:02.987382904 +0100
+@@ -8,37 +8,8 @@
+ //end addition -MM
+ 
+ #if defined(__DJGPP__) || defined(__LINUX__)
+-#include <glob.h>
+ 
+-int d_glob(const char *pattern, d_glob_t *g)
+-{
+- glob_t a;
+- int r;
+-
+- Assert(g!=NULL);
+-
+- a.gl_offs=0;
+-
+- r=glob(pattern,0,NULL,&a);
+- g->gl_pathc=a.gl_pathc;
+- g->gl_pathv=a.gl_pathv;
+- return r;
+-}
+-
+-void d_globfree(d_glob_t *g)
+-{
+-#ifndef __LINUX__ // Linux doesn't believe in freeing glob structures... :-)
+- glob_t a;
+-
+- Assert (g!=NULL);
+-
+- a.gl_offs=0;
+- a.gl_pathc=g->gl_pathc;
+- a.gl_pathv=g->gl_pathv;
+-
+- globfree(&a);
+-#endif
+-}
++//nothing to do, but we don't want to fall into the #error below.
+ 
+ #elif defined(__WINDOWS__)
+ 
+--- d1x/arch/ogl/include/ogl_init.h.cvs-fixes	2005-01-06 19:50:58.311093808 +0100
++++ d1x/arch/ogl/include/ogl_init.h	2005-01-06 19:51:02.977384424 +0100
+@@ -133,6 +133,8 @@
+ void ogl_freetexture(ogl_texture *gltexture);
+ void ogl_freebmtexture(grs_bitmap *bm);
+ void ogl_do_palfx(void);
++void ogl_start_offscreen_render(int x, int y, int w, int h);
++void ogl_end_offscreen_render(void);
+ void ogl_start_frame(void);
+ void ogl_end_frame(void);
+ void ogl_swap_buffers(void);
+--- d1x/arch/ogl/ogl.c.cvs-fixes	2005-01-06 19:50:58.314093352 +0100
++++ d1x/arch/ogl/ogl.c	2005-01-06 19:51:02.979384120 +0100
+@@ -1119,6 +1119,32 @@
+ 	return 0;
+ }
+ 
++grs_canvas *offscreen_save_canv=NULL, *offscreen_canv=NULL;
++void ogl_start_offscreen_render(int x, int y, int w, int h) {
++	if (offscreen_canv) Error("ogl_start_offscreen_render: offscreen_canv!=NULL");
++	offscreen_save_canv = grd_curcanv;
++	offscreen_canv = gr_create_sub_canvas(grd_curcanv, x, y, w, h);
++	gr_set_current_canvas(offscreen_canv);
++	glDrawBuffer(GL_BACK);
++}
++void ogl_end_offscreen_render(void) {
++	int y;
++	if (!offscreen_canv) Error("ogl_end_offscreen_render: no offscreen_canv");
++
++	glDrawBuffer(GL_FRONT);
++	glReadBuffer(GL_BACK);
++	OGL_DISABLE(TEXTURE_2D);
++
++	y = last_height - offscreen_canv->cv_bitmap.bm_y - offscreen_canv->cv_bitmap.bm_h;
++	glRasterPos2f(offscreen_canv->cv_bitmap.bm_x/(float)last_width, y/(float)last_height);
++	glCopyPixels(offscreen_canv->cv_bitmap.bm_x, y,
++			offscreen_canv->cv_bitmap.bm_w, offscreen_canv->cv_bitmap.bm_h, GL_COLOR);
++
++	gr_free_sub_canvas(offscreen_canv);
++	gr_set_current_canvas(offscreen_save_canv);
++	offscreen_canv=NULL;
++}
++
+ void ogl_start_frame(void){
+ 	r_polyc=0;r_tpolyc=0;r_bitmapc=0;r_ubitmapc=0;r_ubitbltc=0;r_upixelc=0;
+ //	gl_badtexture=500;
+--- d1x/arch/sdl/digi.c.cvs-fixes	2005-01-06 19:50:58.272099736 +0100
++++ d1x/arch/sdl/digi.c	2005-01-06 19:51:02.945389288 +0100
+@@ -179,6 +179,7 @@
+ {
+  Uint8 *streamend = stream + len;
+  struct sound_slot *sl;
++ if (!digi_initialised) return;
+   
+  for (sl = SoundSlots; sl < SoundSlots + MAX_SOUND_SLOTS; sl++)
+  {
+@@ -226,6 +227,9 @@
+ /* Initialise audio devices. */
+ int digi_init()
+ {
++ if (SDL_InitSubSystem(SDL_INIT_AUDIO)<0){
++    Error("SDL audio initialisation failed: %s.",SDL_GetError());
++ }
+  //added on 980905 by adb to init sound kill system
+  memset(SampleHandles, 255, sizeof(SampleHandles));
+  //end edit by adb
+@@ -739,7 +743,10 @@
+ }
+ //end edit by adb
+ 
+-void digi_set_volume( int dvolume, int mvolume ) { }
++void digi_set_volume( int dvolume, int mvolume ) {
++	digi_set_digi_volume(dvolume);
++	digi_set_midi_volume(mvolume);
++}
+ 
+ int digi_is_sound_playing(int soundno)
+ {
+@@ -756,7 +763,18 @@
+ 
+ void digi_pause_all() { }
+ void digi_resume_all() { }
+-void digi_stop_all() { }
++void digi_stop_all() {
++	int i;
++	// ... Ano. The lack of this was causing ambient sounds to crash.
++	// fixed, added digi_stop_all 07/19/01 - bluecow
++	
++	for (i=0; i<MAX_SOUND_OBJECTS; i++ )	{
++		if ( SoundObjects[i].flags & SOF_USED )	{
++			SoundSlots[SoundObjects[i].handle].playing = 0;
++			SoundObjects[i].flags = 0;
++		}
++	}
++}
+ 
+  //added on 980905 by adb to make sound channel setting work
+ void digi_set_max_channels(int n) { 
+--- d1x/arch/sdl/init.c.cvs-fixes	2005-01-06 19:50:58.272099736 +0100
++++ d1x/arch/sdl/init.c	2005-01-06 19:51:02.946389136 +0100
+@@ -19,12 +19,6 @@
+  // Initialise the library
+ //edited on 01/03/99 by Matt Mueller - if we use SDL_INIT_EVERYTHING, cdrom is initialized even if -nocdaudio is used
+  if (SDL_Init(
+-#ifdef SDL_AUDIO
+-	SDL_INIT_AUDIO
+-#else
+-	0
+-#endif
+-	|
+ #if SDL_VIDEO || SDL_GL
+ 	SDL_INIT_VIDEO
+ #else
+--- d1x/arch/linux/alsadigi.c.cvs-fixes	2005-01-06 19:50:58.273099584 +0100
++++ d1x/arch/linux/alsadigi.c	2005-01-06 19:51:02.948388832 +0100
+@@ -3,7 +3,7 @@
+ #include <stdlib.h>
+ #include <stdio.h>
+ #include <string.h>
+-#include <sys/asoundlib.h>
++#include <alsa/asoundlib.h>
+ #include <pthread.h>
+ 
+ #include "error.h"
+@@ -173,7 +173,7 @@
+ /* Threading/ALSA stuff */
+ #define LOCK() pthread_mutex_lock(&mutex)
+ #define UNLOCK() pthread_mutex_unlock(&mutex)
+-void *snd_devhandle;
++snd_pcm_t *snd_devhandle;
+ pthread_t thread_id;
+ pthread_mutex_t mutex;
+ 
+@@ -222,8 +222,12 @@
+      sldata = sl->samples;
+     }
+     v = *(sldata++) - 0x80;
+-    *(sp++) = mix8[ *sp + fixmul(v, vl) + 0x80 ];
+-    *(sp++) = mix8[ *sp + fixmul(v, vr) + 0x80 ];
++
++    *sp = mix8[ *sp + fixmul(v, vl) + 0x80 ];
++    sp++;
++
++    *sp = mix8[ *sp + fixmul(v, vr) + 0x80 ];
++    sp++;
+    }
+    sl->position = sldata - sl->samples;
+   }
+@@ -232,17 +236,34 @@
+ //end changes by adb
+ 
+ void *mixer_thread(void *data) {
+-// int i=0;
+- ubyte buffer[512];
++ int err;
++ ubyte buffer[SOUND_BUFFER_SIZE];
++
+  /* Allow ourselves to be asynchronously cancelled */
+  pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+  while (1) {
+-//   printf("i=%d\n",i++);
+-   memset(buffer, 0x80, 512);
++
++   memset(buffer, 0x80, SOUND_BUFFER_SIZE);
+    LOCK();
+-   audio_mixcallback(NULL,buffer,512);
++   audio_mixcallback(NULL,buffer,SOUND_BUFFER_SIZE);
+    UNLOCK();
+-   snd_pcm_write(snd_devhandle, buffer, 512);
++again:
++   err = snd_pcm_writei(snd_devhandle, buffer, SOUND_BUFFER_SIZE/2);
++
++   if (err == -EPIPE) {
++        // Sound buffer underrun
++        err = snd_pcm_prepare(snd_devhandle);
++        if (err < 0) {
++            fprintf(stderr, "Can't recover from underrun: %s\n",
++                    snd_strerror(err));
++        }
++   } else if (err == -EAGAIN) {
++        goto again;
++   } else if (err != SOUND_BUFFER_SIZE/2) {
++        // Each frame has size 2 bytes - hence we expect SOUND_BUFFER_SIZE/2
++        // frames to be written.
++        fprintf(stderr, "Unknown err %d: %s\n", err, snd_strerror(err));
++   }
+  } 
+  return 0;
+ }
+@@ -251,9 +272,9 @@
+ /* Initialise audio devices. */
+ int digi_init()
+ {
+- int card=0, device=0, err;
+- snd_pcm_format_t format;
+- snd_pcm_playback_params_t params;
++ int err, tmp;
++ char *device = "plughw:0,0";
++ snd_pcm_hw_params_t *params;
+  pthread_attr_t attr;
+  pthread_mutexattr_t mutexattr;
+ 
+@@ -262,30 +283,45 @@
+  //end edit by adb
+ 
+  /* Open the ALSA sound device */
+- if ((err = snd_pcm_open(&snd_devhandle, card, device, 
+-     SND_PCM_OPEN_PLAYBACK)) < 0) {  
++ if ((err = snd_pcm_open(&snd_devhandle,device, SND_PCM_STREAM_PLAYBACK, 0)) < 0) {  
+      fprintf(stderr, "open failed: %s\n", snd_strerror( err ));  
+      return -1; 
+  } 
+ 
+- memset(&format, 0, sizeof(format));
+- format.format = SND_PCM_SFMT_U8;
+- format.rate = 11025;
+- format.channels = 2;
+- if ((err = snd_pcm_playback_format(snd_devhandle, &format)) < 0) { 
+-    fprintf(stderr, "format setup failed: %s\n", snd_strerror( err ));
+-    snd_pcm_close( snd_devhandle ); 
+-    return -1; 
+- } 
++ snd_pcm_hw_params_alloca(&params);
++ err = snd_pcm_hw_params_any(snd_devhandle, params);
++ if (err < 0) {
++     printf("ALSA: Error %s\n", snd_strerror(err));
++     return -1;
++ }
++ err = snd_pcm_hw_params_set_access(snd_devhandle, params, SND_PCM_ACCESS_RW_INTERLEAVED);
++ if (err < 0) {
++     printf("ALSA: Error %s\n", snd_strerror(err));
++     return -1;
++ }
++ err = snd_pcm_hw_params_set_format(snd_devhandle, params, SND_PCM_FORMAT_U8);
++ if (err < 0) {
++     printf("ALSA: Error %s\n", snd_strerror(err));
++     return -1;
++ }
++ err = snd_pcm_hw_params_set_channels(snd_devhandle, params, 2);
++ if (err < 0) {
++     printf("ALSA: Error %s\n", snd_strerror(err));
++     return -1;
++ }
++ tmp = 11025;
++ err = snd_pcm_hw_params_set_rate_near(snd_devhandle, params, &tmp, NULL);
++ if (err < 0) {
++     printf("ALSA: Error %s\n", snd_strerror(err));
++     return -1;
++ }
++ snd_pcm_hw_params_set_periods(snd_devhandle, params, 3, 0);
++ snd_pcm_hw_params_set_buffer_size(snd_devhandle,params, (SOUND_BUFFER_SIZE*3)/2);
+ 
+- memset(&params, 0, sizeof(params));
+- params.fragment_size=512;
+- params.fragments_max=2;
+- params.fragments_room=1;
+- if ((err = snd_pcm_playback_params(snd_devhandle, &params)) < 0) { 
+-    fprintf(stderr, "params setup failed: %s\n", snd_strerror( err ));
+-    snd_pcm_close( snd_devhandle ); 
+-    return -1; 
++ err = snd_pcm_hw_params(snd_devhandle, params);
++ if (err < 0) {
++     printf("ALSA: Error %s\n", snd_strerror(err));
++     return -1;
+  }
+ 
+  /* Start the mixer thread */
+@@ -318,10 +354,10 @@
+ void digi_close()
+ {
+  if (!digi_initialised) return;
++ pthread_cancel(thread_id);
+  digi_initialised = 0;
+- snd_pcm_close(snd_devhandle);
+  pthread_mutex_destroy(&mutex);
+- pthread_cancel(thread_id);
++ snd_pcm_close(snd_devhandle);
+ }
+ 
+ static int get_free_slot()
+@@ -586,7 +622,7 @@
+ int digi_link_sound_to_pos2( int soundnum, short segnum, short sidenum, vms_vector * pos, int forever, fix max_volume, fix max_distance )
+ {
+ 	int i, volume, pan;
+-	int soundnum;
++//	int soundnum;
+ 
+ 	if ( max_volume < 0 ) return -1;
+ //	if ( max_volume > F1_0 ) max_volume = F1_0;
+--- d1x/2d/bitblt.c.cvs-fixes	2005-01-06 19:50:58.322092136 +0100
++++ d1x/2d/bitblt.c	2005-01-06 19:51:02.998381232 +0100
+@@ -191,8 +191,10 @@
+ 		if (nbytes&1)
+ 			*dest++=*source++;
+ 		else {
++		        unsigned short *sp=(unsigned short *)dest;
+ 			c=*source++;
+-			*((unsigned short *)dest)++=((short)c<<8)|(short)c;
++			*sp=((short)c<<8)|(short)c;
++			dest+=2;
+ 		}
+ 	}
+ }
+--- d1x/main/titles.c.cvs-fixes	2005-01-06 19:50:58.318092744 +0100
++++ d1x/main/titles.c	2005-01-06 19:51:02.985383208 +0100
+@@ -11,14 +11,20 @@
+ COPYRIGHT 1993-1998 PARALLAX SOFTWARE CORPORATION.  ALL RIGHTS RESERVED.
+ */
+ /*
+- * $Source: /usr/src/cvsroot/d1x/main/titles.c,v $
+- * $Revision: 1.4 $
++ * $Source: /var/cvs/d1x/d1x/main/titles.c,v $
++ * $Revision: 1.6 $
+  * $Author: donut $
+- * $Date: 1999/11/20 10:05:19 $
++ * $Date: 2003/03/09 06:41:01 $
+  * 
+  * Routines to display title screens...
+  * 
+  * $Log: titles.c,v $
++ * Revision 1.6  2003/03/09 06:41:01  donut
++ * change byte typedef to sbyte to avoid conflict with win32 byte which is unsigned
++ *
++ * Revision 1.5  2002/03/26 08:37:40  donut
++ * fix position of briefing animated door bitmap at non 320x200 resolutions
++ *
+  * Revision 1.4  1999/11/20 10:05:19  donut
+  * variable size menu patch from Jan Bobrowski.  Variable menu font size support and a bunch of fixes for menus that didn't work quite right, by me (MPM).
+  *
+@@ -464,8 +470,8 @@
+ 		}
+ 
+ 		switch (Animating_bitmap_type) {
+-			case 0:	bitmap_canv = gr_create_sub_canvas(grd_curcanv, 220, 45, 64, 64);	break;
+-			case 1:	bitmap_canv = gr_create_sub_canvas(grd_curcanv, 220, 45, 94, 94);	break;	//	Adam: Change here for your new animating bitmap thing. 94, 94 are bitmap size.
++			case 0:	bitmap_canv = gr_create_sub_canvas(grd_curcanv, rescale_x(220), rescale_y(45), 64, 64);	break;
++			case 1:	bitmap_canv = gr_create_sub_canvas(grd_curcanv, rescale_x(220), rescale_y(45), 94, 94);	break;	//	Adam: Change here for your new animating bitmap thing. 94, 94 are bitmap size.
+ 			default:	Int3();	//	Impossible, illegal value for Animating_bitmap_type
+ 		}
+ 
+--- d1x/main/bm.c.cvs-fixes	2005-01-06 19:50:58.282098216 +0100
++++ d1x/main/bm.c	2005-01-06 19:51:02.950388528 +0100
+@@ -164,7 +164,7 @@
+ 	
+ 	cfread( &N_polygon_models, sizeof(int), 1, fp );
+ 
+-#ifdef __alpha__
++#if defined(__alpha__) || defined(_LP64)
+        for (i=0; i<N_polygon_models; i++ ) {
+                cfread( &Polygon_models[i], sizeof(polymodel)-4, 1, fp );
+                /* this is a dirty hack */
+--- d1x/main/credits.c.cvs-fixes	2005-01-06 19:50:58.287097456 +0100
++++ d1x/main/credits.c	2005-01-06 19:51:02.956387616 +0100
+@@ -397,6 +397,7 @@
+ 					cfclose(file);
+ 					songs_play_song( SONG_TITLE, 1 );
+ 					free(fade_values_scalled);
++					free(buffer);
+ 					return;
+ 			}
+ 		}
+--- d1x/main/playsave.c.cvs-fixes	2005-01-06 19:50:58.306094568 +0100
++++ d1x/main/playsave.c	2005-01-06 19:51:02.971385336 +0100
+@@ -11,14 +11,17 @@
+ COPYRIGHT 1993-1998 PARALLAX SOFTWARE CORPORATION.  ALL RIGHTS RESERVED.
+ */
+ /*
+- * $Source: /usr/src/cvsroot/d1x/main/playsave.c,v $
+- * $Revision: 1.2 $
++ * $Source: /var/cvs/d1x/d1x/main/playsave.c,v $
++ * $Revision: 1.3 $
+  * $Author: donut $
+- * $Date: 1999/06/14 23:44:12 $
++ * $Date: 2003/02/16 10:44:56 $
+  * 
+  * Functions to load & save player games
+  * 
+  * $Log: playsave.c,v $
++ * Revision 1.3  2003/02/16 10:44:56  donut
++ * fix the weird bug where joystick fire button would do all the d1x key functions at once, when joining a udp game. (but going into config menu would fix it.)  It was due to kc_set_controls() being called before read_player_d1x, so the d1x settings weren't getting noticed.
++ *
+  * Revision 1.2  1999/06/14 23:44:12  donut
+  * Orulz' svgalib/ggi/noerror patches.
+  *
+@@ -227,7 +230,7 @@
+ 
+ #ifdef RCS
+ #pragma off (unreferenced)
+-static char rcsid[] = "$Id: playsave.c,v 1.2 1999/06/14 23:44:12 donut Exp $";
++static char rcsid[] = "$Id: playsave.c,v 1.3 2003/02/16 10:44:56 donut Exp $";
+ #pragma on (unreferenced)
+ #endif
+ 
+@@ -1343,10 +1346,6 @@
+ 		else if (fread(&Config_joystick_sensitivity, sizeof(ubyte), 1, file )!=1)
+ 			errno_ret=errno;
+                 }
+-
+-		if (errno_ret==EZERO)	{
+-                        kc_set_controls();
+-		}
+ 	}
+ 
+ 	if (fclose(file) && errno_ret==EZERO)
+@@ -1386,6 +1385,9 @@
+              highest_secondary++;
+          }
+ 
++	if (errno_ret==EZERO)	{
++		kc_set_controls();
++	}
+ 	return errno_ret;
+ 
+ }
+--- d1x/main/controls.c.cvs-fixes	2005-01-06 19:50:58.285097760 +0100
++++ d1x/main/controls.c	2005-01-06 19:51:02.952388224 +0100
+@@ -11,14 +11,17 @@
+ COPYRIGHT 1993-1998 PARALLAX SOFTWARE CORPORATION.  ALL RIGHTS RESERVED.
+ */
+ /*
+- * $Source: /usr/src/cvsroot/d1x/main/controls.c,v $
+- * $Revision: 1.3 $
+- * $Author: sekmu $
+- * $Date: 2000/04/19 21:30:00 $
++ * $Source: /var/cvs/d1x/d1x/main/controls.c,v $
++ * $Revision: 1.4 $
++ * $Author: donut $
++ * $Date: 2003/07/11 21:32:28 $
+  * 
+  * Code for controlling player movement
+  * 
+  * $Log: controls.c,v $
++ * Revision 1.4  2003/07/11 21:32:28  donut
++ * make ship bobbing fps-independant
++ *
+  * Revision 1.3  2000/04/19 21:30:00  sekmu
+  * movable death-cam from WraithX
+  *
+@@ -197,7 +200,7 @@
+ 
+ #ifdef RCS
+ #pragma off (unreferenced)
+-static char rcsid[] = "$Id: controls.c,v 1.3 2000/04/19 21:30:00 sekmu Exp $";
++static char rcsid[] = "$Id: controls.c,v 1.4 2003/07/11 21:32:28 donut Exp $";
+ #pragma on (unreferenced)
+ #endif
+ 
+@@ -271,6 +274,8 @@
+ 	if (obj->mtype.phys_info.flags & PF_WIGGLE) {
+ 		fix swiggle;
+ 		fix_fastsincos(GameTime, &swiggle, NULL);
++		if (FrameTime < F1_0) // Only scale wiggle if getting at least 1 FPS, to avoid causing the opposite problem.
++			swiggle = fixmul(swiggle*20, FrameTime); //make wiggle fps-independant (based on pre-scaled amount of wiggle at 20 FPS)
+ 		vm_vec_scale_add2(&obj->mtype.phys_info.velocity,&obj->orient.uvec,fixmul(swiggle,Player_ship->wiggle));
+ 	}
+ 
+--- d1x/main/powerup.c.cvs-fixes	2005-01-06 19:50:58.316093048 +0100
++++ d1x/main/powerup.c	2005-01-06 19:51:02.981383816 +0100
+@@ -11,14 +11,17 @@
+ COPYRIGHT 1993-1998 PARALLAX SOFTWARE CORPORATION.  ALL RIGHTS RESERVED.
+ */
+ /*
+- * $Source: /usr/src/cvsroot/d1x/main/powerup.c,v $
+- * $Revision: 1.2 $
+- * $Author: sekmu $
+- * $Date: 1999/09/01 01:09:10 $
++ * $Source: /var/cvs/d1x/d1x/main/powerup.c,v $
++ * $Revision: 1.3 $
++ * $Author: donut $
++ * $Date: 2000/11/13 07:15:38 $
+  * 
+  * Code for powerup objects.
+  * 
+  * $Log: powerup.c,v $
++ * Revision 1.3  2000/11/13 07:15:38  donut
++ * fix autoselecting lasers even if primary autoselect turned off
++ *
+  * Revision 1.2  1999/09/01 01:09:10  sekmu
+  * forgot update for quad powerup for new hud views
+  *
+@@ -156,7 +159,7 @@
+ 
+ #ifdef RCS
+ #pragma off (unreferenced)
+-static char rcsid[] = "$Id: powerup.c,v 1.2 1999/09/01 01:09:10 sekmu Exp $";
++static char rcsid[] = "$Id: powerup.c,v 1.3 2000/11/13 07:15:38 donut Exp $";
+ #pragma on (unreferenced)
+ #endif
+ 
+@@ -428,10 +431,12 @@
+                                 gauge_update_hud_mode=1;
+                                 //end this section addition -VR
+ 				used=1;
++        			if (Allow_primary_cycle){//fix laser select even if autoselect off -MPM
+                                  if(Players[Player_num].flags&PLAYER_FLAGS_QUAD_LASERS)
+                                   maybe_select_primary(9+Players[Player_num].laser_level);
+                                  else
+                                   maybe_select_primary(5+Players[Player_num].laser_level);
++				}
+ 			}
+ 			if (!used && !(Game_mode & GM_MULTI) )
+ 				used = pick_up_energy();
+@@ -495,7 +500,8 @@
+                                 //end this section addition -VR
+                                 //added on 10/8/98 by Victor Rachels for quad autoselect
+                                 //changed on 10/21/98 by Victor Rachels to add other lasers
+-                                maybe_select_primary(9+Players[Player_num].laser_level);
++        			if (Allow_primary_cycle)//fix laser select even if autoselect off -MPM
++                                	maybe_select_primary(9+Players[Player_num].laser_level);
+                                 //end change
+                                 //end this section addition
+ 				used=1;
+--- d1x/main/netlist.c.cvs-fixes	2005-01-06 19:50:58.296096088 +0100
++++ d1x/main/netlist.c	2005-01-06 19:51:02.964386400 +0100
+@@ -686,6 +686,7 @@
+ 			case KEY_ESC:
+ 				selected_game = -1;
+ 				done = 1;
++				break;
+ 			case KEYS_GR_TOGGLE_FULLSCREEN:
+ 				gr_toggle_fullscreen_menu();
+ 				break;
+--- d1x/main/physics.c.cvs-fixes	2005-01-06 19:50:58.302095176 +0100
++++ d1x/main/physics.c	2005-01-06 19:51:02.967385944 +0100
+@@ -633,7 +633,7 @@
+ 	if (obj == debug_obj) {
+ 		printf("object %d:\n  start pos = %x %x %x\n",objnum,XYZ(&obj->pos));
+ 		printf("  thrust = %x %x %x\n",XYZ(&obj->mtype.phys_info.thrust));
+-		printf("  sim_time = %lx\n",sim_time);
++		printf("  sim_time = %x\n",sim_time);
+ 	}
+ 
+ 	//check for correct object segment 
+@@ -749,7 +749,7 @@
+ 
+ 		#ifdef EXTRA_DEBUG
+ 		if (obj == debug_obj) {
+-			printf("   FVI parms: p0 = %8x %8x %8x, segnum=%x, size=%lx\n",XYZ(&obj->pos),obj->segnum,obj->size);
++			printf("   FVI parms: p0 = %8x %8x %8x, segnum=%x, size=%x\n",XYZ(&obj->pos),obj->segnum,obj->size);
+ 			printf("              p1 = %8x %8x %8x\n",XYZ(&new_pos));
+ 		}
+ 		#endif
+@@ -909,7 +909,7 @@
+ 					#ifndef NDEBUG
+ 					mprintf((0,"Bogus sim_time = %x, old = %x\n",sim_time,old_sim_time));
+ 					if (obj == debug_obj)
+-						printf("   Bogus sim_time = %lx, old = %lx, attempted_dist = %lx, actual_dist = %lx\n",sim_time,old_sim_time,attempted_dist,actual_dist);
++						printf("   Bogus sim_time = %x, old = %x, attempted_dist = %x, actual_dist = %x\n",sim_time,old_sim_time,attempted_dist,actual_dist);
+ 					//Int3(); Removed by Rob
+ 					#endif
+ 					sim_time = old_sim_time;
+@@ -921,7 +921,7 @@
+ 
+ 			#ifdef EXTRA_DEBUG
+ 			if (obj == debug_obj)
+-				printf("   new sim_time = %lx\n",sim_time);
++				printf("   new sim_time = %x\n",sim_time);
+ 			#endif
+ 
+ 		}
+@@ -977,7 +977,7 @@
+ 						#ifdef EXTRA_DEBUG
+ 						if (obj == debug_obj) {
+ 							printf("   sliding - wall_norm %x %x %x\n",XYZ(&hit_info.hit_wallnorm));
+-							printf("   wall_part %lx, new velocity = %x %x %x\n",wall_part,XYZ(&obj->mtype.phys_info.velocity));
++							printf("   wall_part %x, new velocity = %x %x %x\n",wall_part,XYZ(&obj->mtype.phys_info.velocity));
+ 						}
+ 						#endif
+ 
+--- d1x/main/polyobj.c.cvs-fixes	2005-01-06 19:50:58.309094112 +0100
++++ d1x/main/polyobj.c	2005-01-06 19:51:02.975384728 +0100
+@@ -11,14 +11,17 @@
+ COPYRIGHT 1993-1998 PARALLAX SOFTWARE CORPORATION.  ALL RIGHTS RESERVED.
+ */
+ /*
+- * $Source: /usr/src/cvsroot/d1x/main/polyobj.c,v $
+- * $Revision: 1.1.1.1 $
++ * $Source: /var/cvs/d1x/d1x/main/polyobj.c,v $
++ * $Revision: 1.2 $
+  * $Author: donut $
+- * $Date: 1999/06/14 22:11:08 $
++ * $Date: 2002/03/26 08:20:01 $
+  * 
+  * Hacked-in polygon objects
+  * 
+  * $Log: polyobj.c,v $
++ * Revision 1.2  2002/03/26 08:20:01  donut
++ * fix briefing spinning robot display in OGL
++ *
+  * Revision 1.1.1.1  1999/06/14 22:11:08  donut
+  * Import of d1x 1.37 source.
+  *
+@@ -106,7 +109,7 @@
+ 
+ #ifdef RCS
+ #pragma off (unreferenced)
+-static char rcsid[] = "$Id: polyobj.c,v 1.1.1.1 1999/06/14 22:11:08 donut Exp $";
++static char rcsid[] = "$Id: polyobj.c,v 1.2 2002/03/26 08:20:01 donut Exp $";
+ #pragma on (unreferenced)
+ #endif
+ 
+@@ -139,6 +142,10 @@
+ #include "piggy.h"
+ #endif
+ 
++#ifdef OGL
++#include "ogl_init.h"
++#endif
++
+ polymodel Polygon_models[MAX_POLYGON_MODELS];	// = {&bot11,&bot17,&robot_s2,&robot_b2,&bot11,&bot17,&robot_s2,&robot_b2};
+ 
+ int N_polygon_models = 0;
+@@ -755,13 +762,19 @@
+ {
+ 	vms_vector	temp_pos=ZERO_VECTOR;
+ 	vms_matrix	temp_orient = IDENTITY_MATRIX;
++#ifndef OGL
+ 	grs_canvas	*save_canv = grd_curcanv,*temp_canv;
++#endif
+ 	//int			save_light;
+ 
+ 	Assert(mn>=0 && mn<N_polygon_models);
+ 
++#ifdef OGL
++	ogl_start_offscreen_render(0, 0, grd_curcanv->cv_bitmap.bm_w, grd_curcanv->cv_bitmap.bm_h);
++#else
+ 	temp_canv = gr_create_canvas(save_canv->cv_bitmap.bm_w,save_canv->cv_bitmap.bm_h);
+ 	gr_set_current_canvas(temp_canv);
++#endif
+ 	gr_clear_canvas( BM_XRGB(0,0,0) );
+ 
+ 	g3_start_frame();
+@@ -778,11 +791,17 @@
+ 	//Lighting_on = 0;
+ 	draw_polygon_model(&temp_pos,&temp_orient,NULL,mn,0,f1_0,NULL,NULL);
+ 	//Lighting_on = save_light;
++	
++	g3_end_frame();
+ 
++#ifdef OGL
++	ogl_end_offscreen_render();
++#else
+ 	gr_set_current_canvas(save_canv);
+ 
+ 	gr_bitmap(0,0,&temp_canv->cv_bitmap);
+ 
+ 	gr_free_canvas(temp_canv);
++#endif
+ }
+ 
+--- d1x/main/game.c.cvs-fixes	2005-01-06 19:50:58.294096392 +0100
++++ d1x/main/game.c	2005-01-06 19:51:02.961386856 +0100
+@@ -1348,6 +1348,7 @@
+ 	i=arch_toggle_fullscreen_menu();
+ 
+ 	generic_key_handler(KEY_PADENTER,0);
++	generic_key_handler(KEY_ENTER,0);
+ 	key_flush();
+ 
+ 	return i;

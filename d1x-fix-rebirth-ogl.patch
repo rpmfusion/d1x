@@ -1,0 +1,13 @@
+diff -ur d1x.orig/arch/ogl/gr.c d1x/arch/ogl/gr.c
+--- d1x.orig/arch/ogl/gr.c	2006-08-20 23:13:25.000000000 +0200
++++ d1x/arch/ogl/gr.c	2006-08-20 23:14:01.000000000 +0200
+@@ -64,7 +64,8 @@
+ int gr_toggle_fullscreen(void){
+ 	gr_do_fullscreen(!ogl_fullscreen);
+ 	//	grd_curscreen->sc_mode=0;//hack to get it to reset screen mode
+-	glFlush(); // ZICO - prevents black screen, screen glitches etc.
++	if (gl_initialized)
++		glFlush(); // ZICO - prevents black screen, screen glitches etc.
+  
+ 	return ogl_fullscreen;
+ }
