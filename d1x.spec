@@ -1,7 +1,7 @@
 Summary:	Modified version of Descent 1
 Name:		d1x
 Version:	1.43
-Release:	6%{?dist}
+Release:	7%{?dist}
 License:	non-commercial
 Group:		Amusements/Games
 Source0:	http://home.zonnet.nl/jwrdegoede/d1x143sc.tar.bz2
@@ -216,6 +216,9 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Thu Jul 24 2008 Hans de Goede <j.w.r.degoede@hhs.nl> 1.43-7
+- Rebuild for buildsys cflags issue
+
 * Wed Jul 23 2008 Hans de Goede <j.w.r.degoede@hhs.nl> 1.43-6
 - Release bump for rpmfusion build
 
