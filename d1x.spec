@@ -1,221 +1,124 @@
-Summary:	Modified version of Descent 1
+%global rebirth_version 0.57.1
+
+Summary:	Descent 1 game engine (d1x-rebirth version)
 Name:		d1x
 Version:	1.43
-Release:	8%{?dist}
+Release:	9.rebirth_v%{rebirth_version}%{?dist}
 License:	non-commercial
 Group:		Amusements/Games
-Source0:	http://home.zonnet.nl/jwrdegoede/d1x143sc.tar.bz2
-Source1:	http://home.zonnet.nl/jwrdegoede/d1swdf.tar.gz
-Source2:	http://d1x.warpcore.org/files/d1bigfnt.zip
-# first batch of patches, many many patches because upstream is dead.
-Patch0:		%{name}-config.patch
-Patch1:		%{name}-opt.patch
-Patch2:		%{name}-fix.patch
-Patch3:		%{name}-paths.patch
-Patch4:		%{name}-maths.patch
-Patch5:		%{name}-types.patch
-Patch6:		%{name}-gcc3.patch
-Patch7:		%{name}-joystick.patch
-Patch8:		%{name}-assert.patch
-Patch9:		%{name}-fixc.patch
-Patch10:	%{name}-gcc34.patch
-Patch11:	%{name}-shareware-fixes.patch
-Patch12:	%{name}-cvs-fixes.patch
-Patch13:	%{name}-miscfixes.patch
-Patch14:	%{name}-cvs-fixes2.patch
-Patch15:	%{name}-gnuasm.patch
-Patch16:	%{name}-new-sdl.patch
-# d1x has been revived as the dxx-rebirth project, I'm honored to say that they
-# have used the livna SRPM's as a starting position and that their tarballs
-# thus include all of the above patches. However there releases aren't all
-# that stable so I've done a diff between 1.43 + all our above patches and
-# their latest release (0.42), and cherry picked the good stuff (I hope):
-Patch21:        d1x-rebirth-fixes.patch
-Patch22:        d1x-rebirth-highresbrief.patch
-Patch23:        d1x-rebirth-mode-handling.patch
-Patch24:        d1x-rebirth-mouselook.patch
-Patch25:        d1x-rebirth-ogl.patch
-# these patches are fixes/improvements on top of the d1x-rebirth patches
-Patch31:        d1x-post-rebirth-fixes.patch
-Patch32:        d1x-fix-rebirth-ogl.patch
-Patch33:        d1x-music.patch
-Patch34:        d1x-help.patch
-Patch35:        d1x-unixify.patch
-Patch36:        d1x-store-res-in-plx.patch
-Patch37:        d1x-playerfile-compat.patch
-Patch38:        d1x-use-reg-save-in-sw.patch
-Patch39:        d1x-playerfile-compat-fix.patch
-# and patches added much later to keep things compiling with the latest gcc
-Patch40:        d1x-gcc43.patch
-URL:		http://d1x.warpcore.org/
-BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
-BuildRequires:	SDL-devel >= 1.1
-BuildRequires:	mesa-libGL-devel mesa-libGLU-devel
-%ifarch %{ix86}
-BuildRequires:	nasm
-%endif
+Source0:	http://downloads.sourceforge.net/dxx-rebirth/d1x-rebirth_v%{rebirth_version}-src.tar.gz
+Source1:	d1x-rebirth.sh
+Source2:	d1swdf.tar.gz
+Patch0:		d1x-rebirth-v0.57.1-libmath.patch
+Patch1:		d1x-rebirth-v0.57.1-physfs_v1.patch
+Patch2:		d1x-rebirth-v0.57.1-split-regular-and-slide-invert.patch
+Patch3:		d1x-rebirth-v0.57.1-desktop.patch
+URL:		http://www.dxx-rebirth.com/
+BuildRequires:	SDL-devel mesa-libGL-devel mesa-libGLU-devel
+BuildRequires:	desktop-file-utils dos2unix
+Requires:	opengl-games-utils >= 0.2
+Requires:	hicolor-icon-theme
+Provides:	%{name}-full = %{version}-%{release}
+Obsoletes:	%{name}-full < %{version}-%{release}
 
 %description
 D1X is a modification of the Descent 1 source that was released by
 Parallax. It's mostly compatible with the Descent 1 v1.5, both in
 multiplayer and on the local machine.
 
-
-%package full
-Summary:	D1X - binaries for full version of game
-Group:		Amusements/Games
-
-%description full
-D1X is a modification of the Descent 1 source that was released by
-Parallax. It's mostly compatible with the Descent 1 v1.5, both in
-multiplayer and on the local machine.
-
-This package contains D1X binaries for the full (registered/commercial) version
-of the game. You will need to place the full version data-files in
-/usr/share/%{name}/full .
+To play Descent1 you need to either need the full (registered/commercial)
+version of the game and place the full version data-files in
+%{_datadir}/%{name}/full; or install the d1x-shareware package.
 
 
 %package shareware
-Summary:	D1X - binaries for shareware version of game
+Summary:	Shareware version of Descent 1
 Group:		Amusements/Games
+Requires:	%{name} = %{version}-%{release}
 
 %description shareware
 D1X is a modification of the Descent 1 source that was released by
 Parallax. It's mostly compatible with the Descent 1 v1.5, both in
 multiplayer and on the local machine.
 
-This package contains D1X binaries and data-files for the shareware version of
-the game.
+This package contains the shareware version of the game.
 
 
 %prep
-%setup -q -n %{name}
-# lots of patches, so no backups as those are useless, since some files
-# get patched many times.
+%setup -q -n d1x-rebirth_v%{rebirth_version}-src
 %patch0 -p1
 %patch1 -p1
 %patch2 -p1
 %patch3 -p1
-%patch4 -p1
-%patch5 -p1
-%patch6 -p1
-%patch7 -p1
-%patch8 -p1
-%patch9 -p1
-%patch10 -p1
-%patch11 -p1
-%patch12 -p1
-%patch13 -p1
-%patch14 -p1
-%patch15 -p1
-%patch16 -p1
-
-%patch21 -p1 
-%patch22 -p1
-%patch23 -p1
-%patch24 -p1
-# patch25 is opengl only and gets applied after building the non ogl version.
-
-%patch31 -p1
-# patch32 is opengl only and gets applied after building the non ogl version.
-%patch33 -p1 -E
-%patch34 -p1
-%patch35 -p1
-%patch36 -p1
-%patch37 -p1
-%patch38 -p1
-%patch39 -p1
-
-%patch40 -p1
+dos2unix -k *.txt
 
 
 %build
-mkdir -p lib
-echo "DEBUGABLE = 1" >> defines.in
-%ifnarch %{ix86}
-echo "NO_ASM = 1" >> defines.in
-%endif
-%ifarch sparc sparc64
-echo "BIGENDIAN = 1" >> defines.in
-%endif
-
-cp defines.in defines.mak
-echo "SDL_IO = 1" >> defines.mak
-make	CC="%{__cc}" \
-	CXX="%{__cxx}" \
-	OPTFLAGS="$RPM_OPT_FLAGS \
-	-DD1XDATAPATH=\\\"%{_datadir}/%{name}/full/\\\""
-mv d1x143 d1x-sdl-full
-
-make clean
-echo "SHAREWARE = 1" >> defines.mak
-make	CC="%{__cc}" \
-	CXX="%{__cxx}" \
-	OPTFLAGS="$RPM_OPT_FLAGS \
-	-DD1XDATAPATH=\\\"%{_datadir}/%{name}/d1shar/\\\""
-mv d1x143sh d1x-sdl-share
-
-# this patch isn't applied until now as this makes some huge video changes
-# (d1x-rebirth scalable cockpit code) which seem to break (cause crashes in) 
-# the software renderer
-patch -p1 < %{PATCH25}
-patch -p1 < %{PATCH32}
-make clean
-cp -f defines.in defines.mak
-echo "SDLGL_IO = 1" >> defines.mak
-make	CC="%{__cc}" \
-	CXX="%{__cxx}" \
-	LFLAGS="-L/usr/X11R6/%{_lib}" \
-	OPTFLAGS="$RPM_OPT_FLAGS \
-	-DD1XDATAPATH=\\\"%{_datadir}/%{name}/full/\\\""
-mv d1x143_ogl d1x-gl-full
-
-make clean
-echo "SHAREWARE = 1" >> defines.mak
-make	CC="%{__cc}" \
-	CXX="%{__cxx}" \
-	LFLAGS="-L/usr/X11R6/%{_lib}" \
-	OPTFLAGS="$RPM_OPT_FLAGS \
-	-DD1XDATAPATH=\\\"%{_datadir}/%{name}/d1shar/\\\""
-mv d1x143sh_ogl d1x-gl-share
+COMMON_FLAGS="prefix=/usr sharepath=%{_datadir}/%{name}/full ipv6=1 verbosebuild=1"
+export CFLAGS="$RPM_OPT_FLAGS"
+scons $COMMON_FLAGS opengl=0
+mv d1x-rebirth d1x-rebirth-sdl
+scons $COMMON_FLAGS opengl=1
+mv d1x-rebirth d1x-rebirth-gl
 
 
 %install
-rm -rf $RPM_BUILD_ROOT
-install -d $RPM_BUILD_ROOT%{_bindir}
-install -d $RPM_BUILD_ROOT%{_datadir}/d1x
-install -d $RPM_BUILD_ROOT%{_datadir}/d1x/full
-install -d $RPM_BUILD_ROOT%{_datadir}/d1x/d1shar
-install d1x-*-* $RPM_BUILD_ROOT%{_bindir}
-tar x -z -C $RPM_BUILD_ROOT%{_datadir}/d1x -f %{SOURCE1}
-unzip -d $RPM_BUILD_ROOT%{_datadir}/d1x/d1shar %{SOURCE2}
-unzip -d $RPM_BUILD_ROOT%{_datadir}/d1x/full   %{SOURCE2}
+mkdir -p $RPM_BUILD_ROOT%{_bindir}
+mkdir -p $RPM_BUILD_ROOT%{_datadir}/d1x/full
+mkdir -p $RPM_BUILD_ROOT%{_datadir}/d1x/d1shar
+install -m 755 d1x-rebirth-sdl $RPM_BUILD_ROOT%{_bindir}
+install -m 755 d1x-rebirth-gl $RPM_BUILD_ROOT%{_bindir}
+install -p -m 755 %{SOURCE1} $RPM_BUILD_ROOT%{_bindir}/d1x-rebirth
+tar x -z -C $RPM_BUILD_ROOT%{_datadir}/d1x -f %{SOURCE2}
+# fixup permissions from tarbal
+chmod 644 $RPM_BUILD_ROOT%{_datadir}/d1x/d1shar/README
+# below is the desktop file and icon stuff.
+mkdir -p $RPM_BUILD_ROOT%{_datadir}/applications
+desktop-file-install --vendor "" \
+  --dir $RPM_BUILD_ROOT%{_datadir}/applications \
+  d1x-rebirth.desktop
+mkdir -p $RPM_BUILD_ROOT%{_datadir}/icons/hicolor/128x128/apps
+install -p -m 644 d1x-rebirth.xpm \
+  $RPM_BUILD_ROOT%{_datadir}/icons/hicolor/128x128/apps
 
 
-%clean
-rm -rf $RPM_BUILD_ROOT
+%post
+touch --no-create %{_datadir}/icons/hicolor &>/dev/null || :
+
+%postun
+if [ $1 -eq 0 ] ; then
+    touch --no-create %{_datadir}/icons/hicolor &>/dev/null
+    gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
+fi
+
+%posttrans
+gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 
 
-%files full
-%defattr(644,root,root,755)
-%attr(755,root,root) %{_bindir}/d1x-sdl-full
-%attr(755,root,root) %{_bindir}/d1x-gl-full
-%{_datadir}/d1x/full/*
-%doc bugs.txt d1x.faq d1x.ini d1x.txt d1x140.txt license.txt readme.d1x readme.org todo.txt
+%files
+%defattr(-,root,root,-)
+%doc COPYING.txt README.txt RELEASE-NOTES.txt
+%{_bindir}/d1x-rebirth*
 %dir %{_datadir}/d1x
 %dir %{_datadir}/d1x/full
+%{_datadir}/applications/d1x-rebirth.desktop
+%{_datadir}/icons/hicolor/128x128/apps/d1x-rebirth.xpm
 
 %files shareware
-%defattr(644,root,root,755)
-%attr(755,root,root) %{_bindir}/d1x-sdl-share
-%attr(755,root,root) %{_bindir}/d1x-gl-share
-%{_datadir}/d1x/d1shar/*
-%doc bugs.txt d1x.faq d1x.ini d1x.txt d1x140.txt license.txt readme.d1x readme.org todo.txt
-%dir %{_datadir}/d1x
-%dir %{_datadir}/d1x/d1shar
+%defattr(-,root,root,-)
+%{_datadir}/d1x/d1shar
 
 
 %changelog
+* Thu Sep 15 2011 Hans de Goede <j.w.r.degoede@gmail.com> - 1.43-9.rebirth_v0.57.1
+- Update to latest d1x-rebirth release v0.57.1
+- One binary now can now handle both the shareware and full versions:
+  - Drop the -full subpackage
+  - Put the engine in the main package
+  - Make the main package obsolete the -full subpackage
+  - Make the -shareware package only contain the shareware data files
+- Add a desktop file and icon
+
 * Sun Mar 29 2009 Thorsten Leemhuis <fedora [AT] leemhuis [DOT] info> - 1.43-8
 - rebuild for new F11 features
 
@@ -290,7 +193,7 @@ rm -rf $RPM_BUILD_ROOT
 - Patch 12 brings in various fixes from the d1x cvs version.
 - Plans:
   -Save settings/games in ~/.d1x instead of in wd.
-  -Search for custom levels in %{_datadir}/d1x/full,~/.d1x and a
+  -Search for custom levels in /usr/share/d1x/full,~/.d1x and a
    user configurable dir.
   -Fix/add music playback.
   -DesktopEntries
