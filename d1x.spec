@@ -14,8 +14,8 @@ Patch1:		d1x-rebirth-v0.57.1-physfs_v1.patch
 Patch2:		d1x-rebirth-v0.57.1-split-regular-and-slide-invert.patch
 Patch3:		d1x-rebirth-v0.57.1-desktop.patch
 URL:		http://www.dxx-rebirth.com/
-BuildRequires:	SDL-devel mesa-libGL-devel mesa-libGLU-devel
-BuildRequires:	desktop-file-utils dos2unix
+BuildRequires:	SDL-devel SDL_mixer-devel mesa-libGL-devel mesa-libGLU-devel
+BuildRequires:	scons desktop-file-utils dos2unix
 Requires:	opengl-games-utils >= 0.2
 Requires:	hicolor-icon-theme
 Provides:	%{name}-full = %{version}-%{release}
