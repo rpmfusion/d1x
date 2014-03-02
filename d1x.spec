@@ -1,18 +1,14 @@
-%global rebirth_version 0.57.1
+%global rebirth_version 0.58.1
 
 Summary:	Descent 1 game engine (d1x-rebirth version)
 Name:		d1x
 Version:	1.43
-Release:	11.rebirth_v%{rebirth_version}%{?dist}
+Release:	12.rebirth_v%{rebirth_version}%{?dist}
 License:	non-commercial
 Group:		Amusements/Games
-Source0:	http://downloads.sourceforge.net/dxx-rebirth/d1x-rebirth_v%{rebirth_version}-src.tar.gz
+Source0:	http://www.dxx-rebirth.com/download/dxx/d1x-rebirth_v%{rebirth_version}-src.tar.gz
 Source1:	d1x-rebirth.sh
 Source2:	d1swdf.tar.gz
-Patch0:		d1x-rebirth-v0.57.1-libmath.patch
-Patch1:		d1x-rebirth-v0.57.1-physfs_v1.patch
-Patch2:		d1x-rebirth-v0.57.1-split-regular-and-slide-invert.patch
-Patch3:		d1x-rebirth-v0.57.1-desktop.patch
 URL:		http://www.dxx-rebirth.com/
 BuildRequires:	SDL-devel SDL_mixer-devel mesa-libGL-devel mesa-libGLU-devel
 BuildRequires:	physfs-devel scons desktop-file-utils dos2unix
@@ -46,10 +42,6 @@ This package contains the shareware version of the game.
 
 %prep
 %setup -q -n d1x-rebirth_v%{rebirth_version}-src
-%patch0 -p1
-%patch1 -p1
-%patch2 -p1
-%patch3 -p1
 dos2unix -k *.txt
 
 
@@ -96,7 +88,6 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 
 
 %files
-%defattr(-,root,root,-)
 %doc COPYING.txt README.txt RELEASE-NOTES.txt
 %{_bindir}/d1x-rebirth*
 %dir %{_datadir}/d1x
@@ -105,11 +96,14 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 %{_datadir}/icons/hicolor/128x128/apps/d1x-rebirth.xpm
 
 %files shareware
-%defattr(-,root,root,-)
 %{_datadir}/d1x/d1shar
 
 
 %changelog
+* Sun Mar  2 2014 Hans de Goede <j.w.r.degoede@gmail.com> - 1.43-12.rebirth_v0.58.1
+- Update to latest d1x-rebirth release v0.58.1 (rf3162)
+- Drop all patches, all upstreamed
+
 * Tue Mar 12 2013 Nicolas Chauvet <kwizart@gmail.com> - 1.43-11.rebirth_v0.57.1
 - https://fedoraproject.org/wiki/Fedora_19_Mass_Rebuild
 
@@ -187,7 +181,7 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 - Build without -fomit-framepointer to allow debugging (DEBUGABLE = 1).
 - Add Patch 15 to fix i386 (asm) compile.
 
-* Mon Apr 29 2005 Hans de Goede <j.w.r.degoede@hhs.nl> 1.43-0.lvn.2
+* Fri Apr 29 2005 Hans de Goede <j.w.r.degoede@hhs.nl> 1.43-0.lvn.2
 - Added Patch 13 which fixes compilation with gcc4
 
 * Mon Jan  3 2005 Hans de Goede <j.w.r.degoede@hhs.nl> 1.43-0.lvn.1
