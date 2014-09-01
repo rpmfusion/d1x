@@ -3,7 +3,7 @@
 Summary:	Descent 1 game engine (d1x-rebirth version)
 Name:		d1x
 Version:	1.43
-Release:	12.rebirth_v%{rebirth_version}%{?dist}
+Release:	13.rebirth_v%{rebirth_version}%{?dist}
 License:	non-commercial
 Group:		Amusements/Games
 Source0:	http://www.dxx-rebirth.com/download/dxx/d1x-rebirth_v%{rebirth_version}-src.tar.gz
@@ -100,6 +100,9 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 
 
 %changelog
+* Mon Sep 01 2014 Sérgio Basto <sergio@serjux.com> - 1.43-13.rebirth_v0.58.1
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_21_22_Mass_Rebuild
+
 * Sun Mar  2 2014 Hans de Goede <j.w.r.degoede@gmail.com> - 1.43-12.rebirth_v0.58.1
 - Update to latest d1x-rebirth release v0.58.1 (rf3162)
 - Drop all patches, all upstreamed
