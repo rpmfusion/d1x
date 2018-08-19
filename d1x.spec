@@ -3,7 +3,7 @@
 Summary:	Descent 1 game engine (d1x-rebirth version)
 Name:		d1x
 Version:	1.43
-Release:	17.rebirth_v%{rebirth_version}%{?dist}
+Release:	18.rebirth_v%{rebirth_version}%{?dist}
 License:	non-commercial
 Group:		Amusements/Games
 Source0:	http://www.dxx-rebirth.com/download/dxx/d1x-rebirth_v%{rebirth_version}-src.tar.gz
@@ -100,6 +100,9 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 
 
 %changelog
+* Sun Aug 19 2018 RPM Fusion Release Engineering <leigh123linux@gmail.com> - 1.43-18.rebirth_v0.58.1
+- Rebuilt for Fedora 29 Mass Rebuild binutils issue
+
 * Fri Jul 27 2018 RPM Fusion Release Engineering <sergio@serjux.com> - 1.43-17.rebirth_v0.58.1
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_29_Mass_Rebuild
 
