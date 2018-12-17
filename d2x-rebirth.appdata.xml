@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component type="desktop">
+  <id>d2x-rebirth.desktop</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <name>Descent 2</name>
+  <summary>3D spacecraft-based first person shooter</summary>
+  <description>
+    <p>
+     Descent 2 is a classic first person shooter. You control a space-ship which
+     is flying through a mine where the AI controlled robots have gone rogue.
+     Your task is to fight the robots and rescue the human workers.
+    </p>
+    <p>
+     Descent 2 is the sequel to the classic Descent, the first game featuring a
+     full 3D environment. In Descent 2 you control your space-ship with six
+     degrees of freedom movement.
+    </p>
+    <p>
+     This version of Descent 2 comes with the demo levels of the game.
+     If you want to play the full (registered/commercial) version of the game,
+     place the alien1.pig, alien2.pig, fire.pig, groupa.pig, ice.pig, water.pig,
+     descent2.hog, descent2.ham, descent2.s11 and descent2.s22 data-files from
+     your registered Descent 2 version in /usr/share/d2x/full;
+     or in $HOME/.d2x-rebirth.
+    </p>
+    <p>
+     If you want to have the movies also add the intro-h.mvl, other-h.mvl and
+     robots-h.mvl files to the dir.
+    </p>
+  </description>
+  <url type="homepage">https://www.dxx-rebirth.com/</url>
+  <screenshots>
+    <screenshot type="default">https://www.dxx-rebirth.com/wp-content/gallery/d2x-rebirth_screenshots/d2xr-scrn24.jpg</screenshot>
+    <screenshot>https://www.dxx-rebirth.com/wp-content/gallery/d2x-rebirth_screenshots/d2xr-scrn1.jpg</screenshot>
+    <screenshot>https://www.dxx-rebirth.com/wp-content/gallery/d2x-rebirth_screenshots/d2xr-scrn12.jpg</screenshot>
+    <screenshot>https://www.dxx-rebirth.com/wp-content/gallery/d2x-rebirth_screenshots/d2xr-scrn17.jpg</screenshot>
+    <screenshot>https://www.dxx-rebirth.com/wp-content/gallery/d2x-rebirth_screenshots/d2xr-scrn31.jpg</screenshot>
+  </screenshots>
+  <updatecontact>j.w.r.degoede_at_gmail.com</updatecontact>
+</component>

@@ -1,105 +1,159 @@
-%global rebirth_version 0.58.1
+%global rebirth_version 0.60
 
-Summary:	Descent 1 game engine (d1x-rebirth version)
+Summary:	Descent 1 game and shareware data files (d1x-rebirth version)
 Name:		d1x
 Version:	1.43
-Release:	18.rebirth_v%{rebirth_version}%{?dist}
+Release:	19.rebirth_v%{rebirth_version}%{?dist}
 License:	non-commercial
-Group:		Amusements/Games
-Source0:	http://www.dxx-rebirth.com/download/dxx/d1x-rebirth_v%{rebirth_version}-src.tar.gz
+# stable-0.60.x branch snapshot downloaded from
+# https://github.com/dxx-rebirth/dxx-rebirth/archive/stable-0.60.x.zip
+# on 16-12-2018, git hash of HEAD b43a351aa90d125a034e68e8b5762ea2dd8bcb93
+Source0:	stable-0.60.x.zip
 Source1:	d1x-rebirth.sh
-Source2:	d1swdf.tar.gz
-URL:		http://www.dxx-rebirth.com/
+Source2:	d2x-rebirth.sh
+Source3:	d1swdf.tar.gz
+Source4:	https://www.icculus.org/d2x/data/d2shar10.tar.gz
+Source5:	d1x-rebirth.appdata.xml
+Source6:	d2x-rebirth.appdata.xml
+URL:		https://www.dxx-rebirth.com/
 BuildRequires:	SDL-devel SDL_mixer-devel mesa-libGL-devel mesa-libGLU-devel
 BuildRequires:	physfs-devel scons desktop-file-utils dos2unix
+BuildRequires:	ImageMagick libappstream-glib
 Requires:	opengl-games-utils >= 0.2
 Requires:	hicolor-icon-theme
 Provides:	%{name}-full = %{version}-%{release}
 Obsoletes:	%{name}-full < %{version}-%{release}
+Provides:	%{name}-shareware = %{version}-%{release}
+Obsoletes:	%{name}-shareware < %{version}-%{release}
 
 %description
 D1X is a modification of the Descent 1 source that was released by
 Parallax. It's mostly compatible with the Descent 1 v1.5, both in
 multiplayer and on the local machine.
 
-To play Descent1 you need to either need the full (registered/commercial)
-version of the game and place the full version data-files in
-%{_datadir}/%{name}/full; or install the d1x-shareware package.
+This package comes with the shareware version of the game. If you want to
+play the full (registered/commercial) version of the game, place the
+descent.hog and descent.pig data-files from your registered descent version
+in %{_datadir}/d1x/full; or in $HOME/.d1x-rebirth.
 
 
-%package shareware
-Summary:	Shareware version of Descent 1
-Group:		Amusements/Games
-Requires:	%{name} = %{version}-%{release}
+%package -n d2x
+Summary:	Descent 2 game and shareware data files (d2x-rebirth version)
+Requires:	opengl-games-utils >= 0.2
+Requires:	hicolor-icon-theme
 
-%description shareware
-D1X is a modification of the Descent 1 source that was released by
-Parallax. It's mostly compatible with the Descent 1 v1.5, both in
-multiplayer and on the local machine.
+%description -n d2x
+D2X is a modification of the Descent 2 source that was released by Parallax.
+It's mostly compatible with the original Descent 2, both in multiplayer and
+on the local machine.
 
-This package contains the shareware version of the game.
+This package comes with the shareware version of the game. If you want to
+play the full (registered/commercial) version of the game, place the
+alien1.pig, alien2.pig, fire.pig, groupa.pig, ice.pig, water.pig, descent2.hog,
+descent2.ham, descent2.s11 and descent2.s22 data-files from your registered
+descent version in %{_datadir}/d2x/full; or in $HOME/.d2x-rebirth.
+
+If you want to have the movies also add the intro-h.mvl, other-h.mvl and
+robots-h.mvl files to the dir.
 
 
 %prep
-%setup -q -n d1x-rebirth_v%{rebirth_version}-src
-dos2unix -k *.txt
+%setup -q -n dxx-rebirth-stable-%{rebirth_version}.x -a 3 -a 4
+# Fixup encoding and CTRL+Z at the end of the orderfrm.txt files
+iconv -f CP850 -t UTF-8 d1shar/ORDERFRM.TXT | head -n-3 > ORDERFRM.TXT
+touch -r d1shar/ORDERFRM.TXT ORDERFRM.TXT
+mv ORDERFRM.TXT d1shar/ORDERFRM.TXT
+cat d2shar10/orderfrm.txt | head -n-1 > orderfrm.txt
+touch -r d2shar10/orderfrm.txt orderfrm.txt
+mv orderfrm.txt d2shar10/orderfrm.txt
+# Prepare txt files for %%doc
+dos2unix -k d?x-rebirth/*.txt d1shar/*.TXT d1shar/README d2shar10/*.txt
+mkdir descent1-shareware-readmes descent2-shareware-readmes
+mv d1shar/*.TXT d1shar/README descent1-shareware-readmes
+mv d2shar10/*.txt descent2-shareware-readmes
+# Prepare the icons for installation
+convert d1x-rebirth/d1x-rebirth.xpm d1x-rebirth.png
+convert d2x-rebirth/d2x-rebirth.xpm d2x-rebirth.png
 
 
 %build
-COMMON_FLAGS="prefix=/usr sharepath=%{_datadir}/%{name}/full ipv6=1 verbosebuild=1"
-export CFLAGS="$RPM_OPT_FLAGS"
+COMMON_FLAGS="prefix=/usr d1x_sharepath=%{_datadir}/d1x/full d2x_sharepath=%{_datadir}/d2x/full ipv6=1 verbosebuild=1"
+export CXXFLAGS="$RPM_OPT_FLAGS"
 scons $COMMON_FLAGS opengl=0
-mv d1x-rebirth d1x-rebirth-sdl
+mv d1x-rebirth/d1x-rebirth d1x-rebirth-sdl
+mv d2x-rebirth/d2x-rebirth d2x-rebirth-sdl
 scons $COMMON_FLAGS opengl=1
-mv d1x-rebirth d1x-rebirth-gl
+mv d1x-rebirth/d1x-rebirth d1x-rebirth-gl
+mv d2x-rebirth/d2x-rebirth d2x-rebirth-gl
 
 
 %install
 mkdir -p $RPM_BUILD_ROOT%{_bindir}
 mkdir -p $RPM_BUILD_ROOT%{_datadir}/d1x/full
 mkdir -p $RPM_BUILD_ROOT%{_datadir}/d1x/d1shar
+mkdir -p $RPM_BUILD_ROOT%{_datadir}/d2x/full
+mkdir -p $RPM_BUILD_ROOT%{_datadir}/d2x/d2shar
 install -m 755 d1x-rebirth-sdl $RPM_BUILD_ROOT%{_bindir}
 install -m 755 d1x-rebirth-gl $RPM_BUILD_ROOT%{_bindir}
+install -m 755 d2x-rebirth-sdl $RPM_BUILD_ROOT%{_bindir}
+install -m 755 d2x-rebirth-gl $RPM_BUILD_ROOT%{_bindir}
 install -p -m 755 %{SOURCE1} $RPM_BUILD_ROOT%{_bindir}/d1x-rebirth
-tar x -z -C $RPM_BUILD_ROOT%{_datadir}/d1x -f %{SOURCE2}
-# fixup permissions from tarbal
-chmod 644 $RPM_BUILD_ROOT%{_datadir}/d1x/d1shar/README
+install -p -m 755 %{SOURCE2} $RPM_BUILD_ROOT%{_bindir}/d2x-rebirth
+# Install descent 1 shareware files
+install -p -m 644 d1shar/descent.* $RPM_BUILD_ROOT%{_datadir}/d1x/d1shar
+# Install descent 2 shareware files
+install -p -m 644 d2shar10/d2demo.{pig,hog,ham} \
+	$RPM_BUILD_ROOT%{_datadir}/d2x/d2shar
 # below is the desktop file and icon stuff.
+mkdir -p $RPM_BUILD_ROOT%{_datadir}/appdata
 mkdir -p $RPM_BUILD_ROOT%{_datadir}/applications
-desktop-file-install --vendor "" \
-  --dir $RPM_BUILD_ROOT%{_datadir}/applications \
-  d1x-rebirth.desktop
 mkdir -p $RPM_BUILD_ROOT%{_datadir}/icons/hicolor/128x128/apps
-install -p -m 644 d1x-rebirth.xpm \
+desktop-file-install \
+  --remove-key="Version" \
+  --set-key="Keywords" --set-value="game;fps;first;person;shooter;descent;" \
+  --dir $RPM_BUILD_ROOT%{_datadir}/applications \
+  d1x-rebirth/d1x-rebirth.desktop
+desktop-file-install \
+  --remove-key="Version" \
+  --set-key="Keywords" --set-value="game;fps;first;person;shooter;descent;" \
+  --dir $RPM_BUILD_ROOT%{_datadir}/applications \
+  d2x-rebirth/d2x-rebirth.desktop
+install -m 644 d1x-rebirth.png d2x-rebirth.png \
   $RPM_BUILD_ROOT%{_datadir}/icons/hicolor/128x128/apps
-
-
-%post
-touch --no-create %{_datadir}/icons/hicolor &>/dev/null || :
-
-%postun
-if [ $1 -eq 0 ] ; then
-    touch --no-create %{_datadir}/icons/hicolor &>/dev/null
-    gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
-fi
-
-%posttrans
-gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
+install -p -m 644 %{SOURCE5} %{SOURCE6} $RPM_BUILD_ROOT%{_datadir}/appdata
+appstream-util validate-relax --nonet \
+  $RPM_BUILD_ROOT%{_datadir}/appdata/d1x-rebirth.appdata.xml \
+  $RPM_BUILD_ROOT%{_datadir}/appdata/d2x-rebirth.appdata.xml
 
 
 %files
-%doc COPYING.txt README.txt RELEASE-NOTES.txt
+%doc d1x-rebirth/README.txt d1x-rebirth/RELEASE-NOTES.txt
+%license COPYING.txt GPL-3.txt descent1-shareware-readmes
 %{_bindir}/d1x-rebirth*
-%dir %{_datadir}/d1x
-%dir %{_datadir}/d1x/full
+%{_datadir}/d1x
+%{_datadir}/appdata/d1x-rebirth.appdata.xml
 %{_datadir}/applications/d1x-rebirth.desktop
-%{_datadir}/icons/hicolor/128x128/apps/d1x-rebirth.xpm
+%{_datadir}/icons/hicolor/128x128/apps/d1x-rebirth.png
 
-%files shareware
-%{_datadir}/d1x/d1shar
+%files -n d2x
+%doc d2x-rebirth/README.txt d2x-rebirth/RELEASE-NOTES.txt
+%license COPYING.txt GPL-3.txt descent2-shareware-readmes
+%{_bindir}/d2x-rebirth*
+%{_datadir}/d2x
+%{_datadir}/appdata/d2x-rebirth.appdata.xml
+%{_datadir}/applications/d2x-rebirth.desktop
+%{_datadir}/icons/hicolor/128x128/apps/d2x-rebirth.png
 
 
 %changelog
+* Sun Dec 16 2018 Hans de Goede <j.w.r.degoede@gmail.com> - 1.43-19.rebirth_v0.60
+- Update to upstream d1x-rebirth stable-0.60.x branch a.d. 16-12-2018 (rf5026)
+- Merge d1x-shareware package into the main-package so that installing d1x
+  from e.g. gnome-software always results in a functional game
+- Add appdata
+- New upstream includes d2x, add a d2x sub-package, including d2x demo levels
+- Trim changelog
+
 * Sun Aug 19 2018 RPM Fusion Release Engineering <leigh123linux@gmail.com> - 1.43-18.rebirth_v0.58.1
 - Rebuilt for Fedora 29 Mass Rebuild binutils issue
 
@@ -136,82 +190,3 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
   - Make the main package obsolete the -full subpackage
   - Make the -shareware package only contain the shareware data files
 - Add a desktop file and icon
-
-* Sun Mar 29 2009 Thorsten Leemhuis <fedora [AT] leemhuis [DOT] info> - 1.43-8
-- rebuild for new F11 features
-
-* Thu Jul 24 2008 Hans de Goede <j.w.r.degoede@hhs.nl> 1.43-7
-- Rebuild for buildsys cflags issue
-
-* Wed Jul 23 2008 Hans de Goede <j.w.r.degoede@hhs.nl> 1.43-6
-- Release bump for rpmfusion build
-
-* Sat Oct 14 2006 Hans de Goede <j.w.r.degoede@hhs.nl> 1.43-5
-- Fix reading of player file (playerfile compat code) when using addon missions
-
-* Tue Sep 26 2006 Hans de Goede <j.w.r.degoede@hhs.nl> 1.43-4
-- Fix building with newer SDL lib which is not directly linked against libX11
-
-* Sun Sep 24 2006 Hans de Goede <j.w.r.degoede@hhs.nl> 1.43-3
-- Rebuild for FC-6
-- Tried switching to d1x-rebirth sources but didn't because they are unstable
-  instead the following d1x-rebirth features were lifted:
-  -scaleable cockpits in opengl mode
-  -support for highres briefingscreens (download them from the dxx-rebirth web)
-  -mouselook support
-  -16:9 monitor support
-  -store the resolution you're playing at in playername.dlx
-- Add/restore music playback, now you can enjoy the original descent music!
-- The player and other descent config files are now stored in ~/.d1x, so
-  if you've got a player you want to keep move its files to ~/.d1x
-- The shareware version now uses the same game load/save code as the registered
-  version allowing in game saving (ALT-F2 saves, ALT-F3 restores)
-- The shareware version can now properly read player files written by the
-  registered version and vica versa
-
-* Sat Mar 18 2006 Thorsten Leemhuis <fedora[AT]leemhuis.info> 1.43-2
-- Increase release after fixing BRs once more
-
-* Fri Mar 17 2006 Hans de Goede <j.w.r.degoede@hhs.nl> 1.43-1
-- Fix BuidRequires for FC-5  
-
-* Thu Mar 09 2006 Andreas Bierfert <andreas.bierfert[AT]lowlatency.de>
-- switch to new release field
-
-* Tue Feb 28 2006 Andreas Bierfert <andreas.bierfert[AT]lowlatency.de>
-- add dist
-
-* Wed Aug 10 2005 Hans de Goede <j.w.r.degoede@hhs.nl> 1.43-0.lvn.4
-- Remove -Wno-pointer-sign from CFLAGS, this option is not valid for gcc 3.4 .
-
-* Sun Aug  7 2005 Hans de Goede <j.w.r.degoede@hhs.nl> 1.43-0.lvn.3
-- Drop Patch 13, intergrate into Patch 0.
-- Add new Patch 13 which introduces some fixes from CVS.
-- Added Patch 14 which fixes:
-  -a few buffer overflows caught by gcc 4 and an uninitialised var warning.
-  -the sliders in the menus with newer gcc / glibc
-   (or x86_64, but doesn't seem 64 bit related)
-  -the 2 initial screens with opengl
-  -made /usr/share/d1x/d1shar or /full the default mission dir
-  -don't use descent2 fonts, these aren't in the hog file instead use fonts
-   from d1bigfnt.zip .
-- Add d1bigfnt.zip and install the fonts in /usr/share/d1x/d1shar or /full.
-- Build without -fomit-framepointer to allow debugging (DEBUGABLE = 1).
-- Add Patch 15 to fix i386 (asm) compile.
-
-* Fri Apr 29 2005 Hans de Goede <j.w.r.degoede@hhs.nl> 1.43-0.lvn.2
-- Added Patch 13 which fixes compilation with gcc4
-
-* Mon Jan  3 2005 Hans de Goede <j.w.r.degoede@hhs.nl> 1.43-0.lvn.1
-- First Livna release, based on PLD SRPM.
-- Patches 0-10 are from PLD, have been reviewed and are all compilation fixes.
-- Patch 11 fixes 2 issues with the shareware version:
-  -Pressing F1 no longer causes a segfault.
-  -Saving now works.
-- Patch 12 brings in various fixes from the d1x cvs version.
-- Plans:
-  -Save settings/games in ~/.d1x instead of in wd.
-  -Search for custom levels in /usr/share/d1x/full,~/.d1x and a
-   user configurable dir.
-  -Fix/add music playback.
-  -DesktopEntries

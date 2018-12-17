@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component type="desktop">
+  <id>d1x-rebirth.desktop</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <name>Descent</name>
+  <summary>3D spacecraft-based first person shooter</summary>
+  <description>
+    <p>
+     Descent is a classic first person shooter. You control a space-ship which
+     is flying through a mine where the AI controlled robots have gone rogue.
+     Your task is to fight the robots and rescue the human workers.
+    </p>
+    <p>
+     Descent is the first game featuring a full 3D environment. In Descent
+     you control your space-ship with six degrees of freedom movement.
+    </p>
+    <p>
+     This version of Descent comes with the shareware version of the game.
+     If you want to play the full (registered/commercial) version of the game,
+     place the descent.hog and descent.pig data-files from your registered
+     Descent version in /usr/share/d1x/full; or in $HOME/.d1x-rebirth.
+    </p>
+  </description>
+  <url type="homepage">https://www.dxx-rebirth.com/</url>
+  <screenshots>
+    <screenshot type="default">https://www.dxx-rebirth.com/wp-content/gallery/d1x-rebirth_screenshots/d1xr-scrn22.jpg</screenshot>
+    <screenshot>https://www.dxx-rebirth.com/wp-content/gallery/d1x-rebirth_screenshots/d1xr-scrn10.jpg</screenshot>
+    <screenshot>https://www.dxx-rebirth.com/wp-content/gallery/d1x-rebirth_screenshots/d1xr-scrn13.jpg</screenshot>
+    <screenshot>https://www.dxx-rebirth.com/wp-content/gallery/d1x-rebirth_screenshots/d1xr-scrn15.jpg</screenshot>
+    <screenshot>https://www.dxx-rebirth.com/wp-content/gallery/d1x-rebirth_screenshots/d1xr-scrn2.jpg</screenshot>
+  </screenshots>
+  <updatecontact>j.w.r.degoede_at_gmail.com</updatecontact>
+</component>
