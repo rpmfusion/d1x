@@ -16,6 +16,7 @@ Source4:	https://www.icculus.org/d2x/data/d2shar10.tar.gz
 Source5:	d1x-rebirth.appdata.xml
 Source6:	d2x-rebirth.appdata.xml
 URL:		https://www.dxx-rebirth.com/
+BuildRequires:	gcc gcc-c++
 BuildRequires:	SDL-devel SDL_mixer-devel mesa-libGL-devel mesa-libGLU-devel
 BuildRequires:	physfs-devel scons desktop-file-utils dos2unix
 BuildRequires:	ImageMagick libappstream-glib
