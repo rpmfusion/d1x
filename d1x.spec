@@ -1,14 +1,16 @@
+# Upstream is not really good in doing timely releases, so we use
+# a git snapshot of the dxx-rebirth stable-0.60.x branch
 %global rebirth_version 0.60
+%global snapshotdate 20181218
+%global commit af25483d01e444553b70cf70c2c7fb8403875f71
+%global shortcommit %(c=%{commit}; echo ${c:0:7})
 
 Summary:	Descent 1 game and shareware data files (d1x-rebirth version)
 Name:		d1x
 Version:	1.43
-Release:	19.rebirth_v%{rebirth_version}%{?dist}
+Release:	20.rebirth_v%{rebirth_version}.%{snapshotdate}git%{shortcommit}%{?dist}
 License:	non-commercial
-# stable-0.60.x branch snapshot downloaded from
-# https://github.com/dxx-rebirth/dxx-rebirth/archive/stable-0.60.x.zip
-# on 16-12-2018, git hash of HEAD b43a351aa90d125a034e68e8b5762ea2dd8bcb93
-Source0:	stable-0.60.x.zip
+Source0:	https://github.com/dxx-rebirth/dxx-rebirth/archive/%{commit}/dxx-rebirth-%{shortcommit}.tar.gz
 Source1:	d1x-rebirth.sh
 Source2:	d2x-rebirth.sh
 Source3:	d1swdf.tar.gz
@@ -59,7 +61,7 @@ robots-h.mvl files to the dir.
 
 
 %prep
-%setup -q -n dxx-rebirth-stable-%{rebirth_version}.x -a 3 -a 4
+%setup -q -n dxx-rebirth-%{commit} -a 3 -a 4
 # Fixup encoding and CTRL+Z at the end of the orderfrm.txt files
 iconv -f CP850 -t UTF-8 d1shar/ORDERFRM.TXT | head -n-3 > ORDERFRM.TXT
 touch -r d1shar/ORDERFRM.TXT ORDERFRM.TXT
@@ -147,6 +149,10 @@ appstream-util validate-relax --nonet \
 
 
 %changelog
+* Tue Dec 18 2018 Hans de Goede <j.w.r.degoede@gmail.com> - 1.43-20.rebirth_v0.60.20181218gitaf25483
+- Update to upstream d1x-rebirth stable-0.60.x branch a.d. 18-12-2018
+- Fixes d2x-rebirth crashing when the descent 2 mvl (movie) files are present
+
 * Sun Dec 16 2018 Hans de Goede <j.w.r.degoede@gmail.com> - 1.43-19.rebirth_v0.60
 - Update to upstream d1x-rebirth stable-0.60.x branch a.d. 16-12-2018 (rf5026)
 - Merge d1x-shareware package into the main-package so that installing d1x
