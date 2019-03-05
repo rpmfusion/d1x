@@ -8,7 +8,7 @@
 Summary:	Descent 1 game and shareware data files (d1x-rebirth version)
 Name:		d1x
 Version:	1.43
-Release:	20.rebirth_v%{rebirth_version}.%{snapshotdate}git%{shortcommit}%{?dist}
+Release:	21.rebirth_v%{rebirth_version}.%{snapshotdate}git%{shortcommit}%{?dist}
 License:	non-commercial
 Source0:	https://github.com/dxx-rebirth/dxx-rebirth/archive/%{commit}/dxx-rebirth-%{shortcommit}.tar.gz
 Source1:	d1x-rebirth.sh
@@ -149,6 +149,9 @@ appstream-util validate-relax --nonet \
 
 
 %changelog
+* Tue Mar 05 2019 RPM Fusion Release Engineering <leigh123linux@gmail.com> - 1.43-21.rebirth_v0.60.20181218gitaf25483
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_30_Mass_Rebuild
+
 * Tue Dec 18 2018 Hans de Goede <j.w.r.degoede@gmail.com> - 1.43-20.rebirth_v0.60.20181218gitaf25483
 - Update to upstream d1x-rebirth stable-0.60.x branch a.d. 18-12-2018
 - Fixes d2x-rebirth crashing when the descent 2 mvl (movie) files are present
