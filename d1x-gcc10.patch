@@ -1,0 +1,45 @@
+diff -up dxx-rebirth-af25483d01e444553b70cf70c2c7fb8403875f71/common/3d/clipper.cpp~ dxx-rebirth-af25483d01e444553b70cf70c2c7fb8403875f71/common/3d/clipper.cpp
+--- dxx-rebirth-af25483d01e444553b70cf70c2c7fb8403875f71/common/3d/clipper.cpp~	2018-12-18 05:39:20.000000000 +0100
++++ dxx-rebirth-af25483d01e444553b70cf70c2c7fb8403875f71/common/3d/clipper.cpp	2020-03-14 22:56:56.867804712 +0100
+@@ -5,6 +5,8 @@
+  * terms and a link to the Git history.
+  */
+ 
++#include <stdexcept>
++
+ #include "3d.h"
+ #include "globvars.h"
+ #include "clipper.h"
+diff -up dxx-rebirth-af25483d01e444553b70cf70c2c7fb8403875f71/common/include/physfsx.h~ dxx-rebirth-af25483d01e444553b70cf70c2c7fb8403875f71/common/include/physfsx.h
+--- dxx-rebirth-af25483d01e444553b70cf70c2c7fb8403875f71/common/include/physfsx.h~	2018-12-18 05:39:20.000000000 +0100
++++ dxx-rebirth-af25483d01e444553b70cf70c2c7fb8403875f71/common/include/physfsx.h	2020-03-14 23:01:45.626259926 +0100
+@@ -13,6 +13,7 @@
+ 
+ #pragma once
+ 
++#include <stdexcept>
+ #include <cstddef>
+ #include <memory>
+ #include <string.h>
+diff -up dxx-rebirth-af25483d01e444553b70cf70c2c7fb8403875f71/common/main/segment.h~ dxx-rebirth-af25483d01e444553b70cf70c2c7fb8403875f71/common/main/segment.h
+--- dxx-rebirth-af25483d01e444553b70cf70c2c7fb8403875f71/common/main/segment.h~	2018-12-18 05:39:20.000000000 +0100
++++ dxx-rebirth-af25483d01e444553b70cf70c2c7fb8403875f71/common/main/segment.h	2020-03-14 22:56:55.739802933 +0100
+@@ -25,6 +25,7 @@ COPYRIGHT 1993-1999 PARALLAX SOFTWARE CO
+ 
+ #pragma once
+ 
++#include <stdexcept>
+ #include <physfs.h>
+ #include <type_traits>
+ #include "pstypes.h"
+diff -up dxx-rebirth-af25483d01e444553b70cf70c2c7fb8403875f71/similar/main/ai.cpp~ dxx-rebirth-af25483d01e444553b70cf70c2c7fb8403875f71/similar/main/ai.cpp
+--- dxx-rebirth-af25483d01e444553b70cf70c2c7fb8403875f71/similar/main/ai.cpp~	2018-12-18 05:39:20.000000000 +0100
++++ dxx-rebirth-af25483d01e444553b70cf70c2c7fb8403875f71/similar/main/ai.cpp	2020-03-14 22:56:57.580805835 +0100
+@@ -24,6 +24,7 @@ COPYRIGHT 1993-1999 PARALLAX SOFTWARE CO
+  */
+ 
+ #include <algorithm>
++#include <stdexcept>
+ #include <cstdlib>
+ #include <stdio.h>
+ #include <time.h>

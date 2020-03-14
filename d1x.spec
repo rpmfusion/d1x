@@ -8,7 +8,7 @@
 Summary:	Descent 1 game and shareware data files (d1x-rebirth version)
 Name:		d1x
 Version:	1.43
-Release:	23.rebirth_v%{rebirth_version}.%{snapshotdate}git%{shortcommit}%{?dist}
+Release:	24.rebirth_v%{rebirth_version}.%{snapshotdate}git%{shortcommit}%{?dist}
 License:	non-commercial
 Source0:	https://github.com/dxx-rebirth/dxx-rebirth/archive/%{commit}/dxx-rebirth-%{shortcommit}.tar.gz
 Source1:	d1x-rebirth.sh
@@ -17,6 +17,7 @@ Source3:	d1swdf.tar.gz
 Source4:	https://www.icculus.org/d2x/data/d2shar10.tar.gz
 Source5:	d1x-rebirth.appdata.xml
 Source6:	d2x-rebirth.appdata.xml
+Patch0:		d1x-gcc10.patch
 URL:		https://www.dxx-rebirth.com/
 BuildRequires:	gcc gcc-c++ libpng-devel
 BuildRequires:	SDL-devel SDL_mixer-devel mesa-libGL-devel mesa-libGLU-devel
@@ -62,6 +63,7 @@ robots-h.mvl files to the dir.
 
 %prep
 %setup -q -n dxx-rebirth-%{commit} -a 3 -a 4
+%patch0 -p1
 # Fixup encoding and CTRL+Z at the end of the orderfrm.txt files
 iconv -f CP850 -t UTF-8 d1shar/ORDERFRM.TXT | head -n-3 > ORDERFRM.TXT
 touch -r d1shar/ORDERFRM.TXT ORDERFRM.TXT
@@ -149,6 +151,9 @@ appstream-util validate-relax --nonet \
 
 
 %changelog
+* Sat Mar 14 2020 Hans de Goede <j.w.r.degoede@gmail.com> - 1.43-24.rebirth_v0.60.20181218gitaf25483
+- Fix FTBFS
+
 * Wed Feb 05 2020 RPM Fusion Release Engineering <leigh123linux@gmail.com> - 1.43-23.rebirth_v0.60.20181218gitaf25483
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_32_Mass_Rebuild
 
