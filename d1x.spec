@@ -8,7 +8,7 @@
 Summary:	Descent 1 game and shareware data files (d1x-rebirth version)
 Name:		d1x
 Version:	1.43
-Release:	24.rebirth_v%{rebirth_version}.%{snapshotdate}git%{shortcommit}%{?dist}
+Release:	25.rebirth_v%{rebirth_version}.%{snapshotdate}git%{shortcommit}%{?dist}
 License:	non-commercial
 Source0:	https://github.com/dxx-rebirth/dxx-rebirth/archive/%{commit}/dxx-rebirth-%{shortcommit}.tar.gz
 Source1:	d1x-rebirth.sh
@@ -25,6 +25,7 @@ BuildRequires:	physfs-devel scons desktop-file-utils dos2unix
 BuildRequires:	ImageMagick libappstream-glib
 Requires:	opengl-games-utils >= 0.2
 Requires:	hicolor-icon-theme
+Requires:	timidity++-patches
 Provides:	%{name}-full = %{version}-%{release}
 Obsoletes:	%{name}-full < %{version}-%{release}
 Provides:	%{name}-shareware = %{version}-%{release}
@@ -45,6 +46,7 @@ in %{_datadir}/d1x/full; or in $HOME/.d1x-rebirth.
 Summary:	Descent 2 game and shareware data files (d2x-rebirth version)
 Requires:	opengl-games-utils >= 0.2
 Requires:	hicolor-icon-theme
+Requires:	timidity++-patches
 
 %description -n d2x
 D2X is a modification of the Descent 2 source that was released by Parallax.
@@ -151,6 +153,10 @@ appstream-util validate-relax --nonet \
 
 
 %changelog
+* Wed Apr  1 2020 Hans de Goede <j.w.r.degoede@gmail.com> - 1.43-25.rebirth_v0.60.20181218gitaf25483
+- Add Requires: timidity++-patches, fixes missing music and
+  crash on completion of first level (rf#5576)
+
 * Sat Mar 14 2020 Hans de Goede <j.w.r.degoede@gmail.com> - 1.43-24.rebirth_v0.60.20181218gitaf25483
 - Fix FTBFS
 
