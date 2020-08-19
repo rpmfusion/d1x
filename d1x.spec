@@ -8,7 +8,7 @@
 Summary:	Descent 1 game and shareware data files (d1x-rebirth version)
 Name:		d1x
 Version:	1.43
-Release:	25.rebirth_v%{rebirth_version}.%{snapshotdate}git%{shortcommit}%{?dist}
+Release:	26.rebirth_v%{rebirth_version}.%{snapshotdate}git%{shortcommit}%{?dist}
 License:	non-commercial
 Source0:	https://github.com/dxx-rebirth/dxx-rebirth/archive/%{commit}/dxx-rebirth-%{shortcommit}.tar.gz
 Source1:	d1x-rebirth.sh
@@ -153,6 +153,9 @@ appstream-util validate-relax --nonet \
 
 
 %changelog
+* Wed Aug 19 2020 RPM Fusion Release Engineering <leigh123linux@gmail.com> - 1.43-26.rebirth_v0.60.20181218gitaf25483
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_33_Mass_Rebuild
+
 * Wed Apr  1 2020 Hans de Goede <j.w.r.degoede@gmail.com> - 1.43-25.rebirth_v0.60.20181218gitaf25483
 - Add Requires: timidity++-patches, fixes missing music and
   crash on completion of first level (rf#5576)
