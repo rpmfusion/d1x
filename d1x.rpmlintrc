@@ -1,0 +1,8 @@
+# /usr/dxx/full and hog file names are not a spelling errors
+addFilter("spelling-error %description .*")
+# This is why this is in rpmfusion nonfree
+addFilter("W: invalid-license non-commercial")
+# We don't have manpages for d1x
+addFilter("W: no-manual-page-for-binary .*")
+# We don't have an URL for this anymore
+addFilter("W: invalid-url Source3: d1swdf.tar.gz")

@@ -1,14 +1,12 @@
-# Upstream is not really good in doing timely releases, so we use
-# a git snapshot of the dxx-rebirth stable-0.60.x branch
-%global rebirth_version 0.60
-%global snapshotdate 20181218
-%global commit af25483d01e444553b70cf70c2c7fb8403875f71
+# Upstream does not do releases, they rely on weekly git snapshot builds
+%global snapshotdate 20210126
+%global commit 1afd0eeae2819e641ecae6a974f74e41982ca13d
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 
 Summary:	Descent 1 game and shareware data files (d1x-rebirth version)
 Name:		d1x
 Version:	1.43
-Release:	27.rebirth_v%{rebirth_version}.%{snapshotdate}git%{shortcommit}%{?dist}
+Release:	28.rebirth.%{snapshotdate}git%{shortcommit}%{?dist}
 License:	non-commercial
 Source0:	https://github.com/dxx-rebirth/dxx-rebirth/archive/%{commit}/dxx-rebirth-%{shortcommit}.tar.gz
 Source1:	d1x-rebirth.sh
@@ -20,7 +18,7 @@ Source6:	d2x-rebirth.appdata.xml
 Patch0:		d1x-gcc10.patch
 URL:		https://www.dxx-rebirth.com/
 BuildRequires:	gcc gcc-c++ libpng-devel
-BuildRequires:	SDL-devel SDL_mixer-devel mesa-libGL-devel mesa-libGLU-devel
+BuildRequires:	SDL-devel SDL_mixer-devel SDL_image-devel mesa-libGL-devel mesa-libGLU-devel
 BuildRequires:	physfs-devel scons desktop-file-utils dos2unix
 BuildRequires:	ImageMagick libappstream-glib
 Requires:	opengl-games-utils >= 0.2
@@ -34,7 +32,7 @@ Obsoletes:	%{name}-shareware < %{version}-%{release}
 %description
 D1X is a modification of the Descent 1 source that was released by
 Parallax. It's mostly compatible with the Descent 1 v1.5, both in
-multiplayer and on the local machine.
+multi-player and on the local machine.
 
 This package comes with the shareware version of the game. If you want to
 play the full (registered/commercial) version of the game, place the
@@ -50,7 +48,7 @@ Requires:	timidity++-patches
 
 %description -n d2x
 D2X is a modification of the Descent 2 source that was released by Parallax.
-It's mostly compatible with the original Descent 2, both in multiplayer and
+It's mostly compatible with the original Descent 2, both in multi-player and
 on the local machine.
 
 This package comes with the shareware version of the game. If you want to
@@ -134,7 +132,7 @@ appstream-util validate-relax --nonet \
 
 
 %files
-%doc d1x-rebirth/README.txt d1x-rebirth/RELEASE-NOTES.txt
+%doc README.md d1x-rebirth/RELEASE-NOTES.txt
 %license COPYING.txt GPL-3.txt descent1-shareware-readmes
 %{_bindir}/d1x-rebirth*
 %{_datadir}/d1x
@@ -143,7 +141,7 @@ appstream-util validate-relax --nonet \
 %{_datadir}/icons/hicolor/128x128/apps/d1x-rebirth.png
 
 %files -n d2x
-%doc d2x-rebirth/README.txt d2x-rebirth/RELEASE-NOTES.txt
+%doc README.md d2x-rebirth/RELEASE-NOTES.txt
 %license COPYING.txt GPL-3.txt descent2-shareware-readmes
 %{_bindir}/d2x-rebirth*
 %{_datadir}/d2x
@@ -153,6 +151,11 @@ appstream-util validate-relax --nonet \
 
 
 %changelog
+* Sat Feb 06 2021 Hans de Goede <j.w.r.degoede@gmail.com> - 1.43-28.rebirth.20210126git1afd0ee
+- Upstream no longer does regular releases, instead they release weekly snapshots
+- Update to 20210126 snapshot
+- Fix FTBFS
+
 * Thu Feb 04 2021 RPM Fusion Release Engineering <leigh123linux@gmail.com> - 1.43-27.rebirth_v0.60.20181218gitaf25483
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_34_Mass_Rebuild
 
