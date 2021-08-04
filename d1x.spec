@@ -6,7 +6,7 @@
 Summary:	Descent 1 game and shareware data files (d1x-rebirth version)
 Name:		d1x
 Version:	1.43
-Release:	28.rebirth.%{snapshotdate}git%{shortcommit}%{?dist}
+Release:	29.rebirth.%{snapshotdate}git%{shortcommit}%{?dist}
 License:	non-commercial
 Source0:	https://github.com/dxx-rebirth/dxx-rebirth/archive/%{commit}/dxx-rebirth-%{shortcommit}.tar.gz
 Source1:	d1x-rebirth.sh
@@ -151,6 +151,9 @@ appstream-util validate-relax --nonet \
 
 
 %changelog
+* Wed Aug 04 2021 RPM Fusion Release Engineering <leigh123linux@gmail.com> - 1.43-29.rebirth.20210126git1afd0ee
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_35_Mass_Rebuild
+
 * Sat Feb 06 2021 Hans de Goede <j.w.r.degoede@gmail.com> - 1.43-28.rebirth.20210126git1afd0ee
 - Upstream no longer does regular releases, instead they release weekly snapshots
 - Update to 20210126 snapshot
