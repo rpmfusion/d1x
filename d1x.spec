@@ -20,7 +20,7 @@ Patch1:		d1x-gcc12.patch
 Patch2:		d1x-window_icon_bitmap.patch
 URL:		https://www.dxx-rebirth.com/
 BuildRequires:	gcc gcc-c++ libpng-devel
-BuildRequires:	SDL2-devel SDL2_mixer-devel SDL_image-devel
+BuildRequires:	SDL2-devel SDL2_mixer-devel SDL2_image-devel
 BuildRequires:	mesa-libGL-devel mesa-libGLU-devel
 BuildRequires:	physfs-devel scons desktop-file-utils dos2unix
 BuildRequires:	ImageMagick libappstream-glib
