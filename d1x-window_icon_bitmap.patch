@@ -1,0 +1,16 @@
+diff -up dxx-rebirth-7258b7fd5966fc38e53f4d8192b0c810829ada02/common/include/fwd-gr.h~ dxx-rebirth-7258b7fd5966fc38e53f4d8192b0c810829ada02/common/include/fwd-gr.h
+--- dxx-rebirth-7258b7fd5966fc38e53f4d8192b0c810829ada02/common/include/fwd-gr.h~	2022-01-30 05:40:54.000000000 +0100
++++ dxx-rebirth-7258b7fd5966fc38e53f4d8192b0c810829ada02/common/include/fwd-gr.h	2022-03-10 22:41:27.636936934 +0100
+@@ -277,10 +277,10 @@ namespace dsx {
+ 
+ #if defined(DXX_BUILD_DESCENT_I)
+ #define DXX_SDL_WINDOW_CAPTION	"Descent"
+-#define DXX_SDL_WINDOW_ICON_BITMAP	"d1x-rebirth.bmp"
++#define DXX_SDL_WINDOW_ICON_BITMAP	"/usr/share/d1x/d1x-rebirth.bmp"
+ #elif defined(DXX_BUILD_DESCENT_II)
+ #define DXX_SDL_WINDOW_CAPTION	"Descent II"
+-#define DXX_SDL_WINDOW_ICON_BITMAP	"d2x-rebirth.bmp"
++#define DXX_SDL_WINDOW_ICON_BITMAP	"/usr/share/d2x/d2x-rebirth.bmp"
+ void gr_copy_palette(palette_array_t &gr_palette, const palette_array_t &pal);
+ #endif
+ 

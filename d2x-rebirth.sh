@@ -2,11 +2,7 @@
 
 . /usr/share/opengl-games-utils/opengl-game-functions.sh
 
-if hasDri; then
-    D2X=/usr/bin/d2x-rebirth-gl
-else
-    D2X=/usr/bin/d2x-rebirth-sdl
-fi
+checkDriOK d2x-rebirth
 
 if [ '(' -f /usr/share/d2x/full/descent2.hog -a  \
          -f /usr/share/d2x/full/descent2.ham -a  \
@@ -28,7 +24,7 @@ if [ '(' -f /usr/share/d2x/full/descent2.hog -a  \
          -f $HOME/.d2x-rebirth/groupa.pig -a     \
          -f $HOME/.d2x-rebirth/ice.pig -a        \
          -f $HOME/.d2x-rebirth/water.pig ')' ]; then
-    exec $D2X "$@"
+    exec /usr/libexec/d2x-rebirth "$@"
 else
-    exec $D2X -hogdir /usr/share/d2x/d2shar/ "$@"
+    exec /usr/libexec/d2x-rebirth -hogdir /usr/share/d2x/d2shar/ "$@"
 fi

@@ -1,5 +1,3 @@
-# /usr/dxx/full and hog file names are not a spelling errors
-addFilter("spelling-error %description .*")
 # This is why this is in rpmfusion nonfree
 addFilter("W: invalid-license non-commercial")
 # We don't have manpages for d1x

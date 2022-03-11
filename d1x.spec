@@ -1,12 +1,12 @@
 # Upstream does not do releases, they rely on weekly git snapshot builds
-%global snapshotdate 20210126
-%global commit 1afd0eeae2819e641ecae6a974f74e41982ca13d
+%global snapshotdate 20220222
+%global commit 7258b7fd5966fc38e53f4d8192b0c810829ada02
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 
 Summary:	Descent 1 game and shareware data files (d1x-rebirth version)
 Name:		d1x
 Version:	1.43
-Release:	30.rebirth.%{snapshotdate}git%{shortcommit}%{?dist}
+Release:	31.rebirth.%{snapshotdate}git%{shortcommit}%{?dist}
 License:	non-commercial
 Source0:	https://github.com/dxx-rebirth/dxx-rebirth/archive/%{commit}/dxx-rebirth-%{shortcommit}.tar.gz
 Source1:	d1x-rebirth.sh
@@ -16,9 +16,12 @@ Source4:	https://www.icculus.org/d2x/data/d2shar10.tar.gz
 Source5:	d1x-rebirth.appdata.xml
 Source6:	d2x-rebirth.appdata.xml
 Patch0:		d1x-gcc10.patch
+Patch1:		d1x-gcc12.patch
+Patch2:		d1x-window_icon_bitmap.patch
 URL:		https://www.dxx-rebirth.com/
 BuildRequires:	gcc gcc-c++ libpng-devel
-BuildRequires:	SDL-devel SDL_mixer-devel SDL_image-devel mesa-libGL-devel mesa-libGLU-devel
+BuildRequires:	SDL2-devel SDL2_mixer-devel SDL_image-devel
+BuildRequires:	mesa-libGL-devel mesa-libGLU-devel
 BuildRequires:	physfs-devel scons desktop-file-utils dos2unix
 BuildRequires:	ImageMagick libappstream-glib
 Requires:	opengl-games-utils >= 0.2
@@ -64,6 +67,8 @@ robots-h.mvl files to the dir.
 %prep
 %setup -q -n dxx-rebirth-%{commit} -a 3 -a 4
 %patch0 -p1
+%patch1 -p1
+%patch2 -p1
 # Fixup encoding and CTRL+Z at the end of the orderfrm.txt files
 iconv -f CP850 -t UTF-8 d1shar/ORDERFRM.TXT | head -n-3 > ORDERFRM.TXT
 touch -r d1shar/ORDERFRM.TXT ORDERFRM.TXT
@@ -82,26 +87,20 @@ convert d2x-rebirth/d2x-rebirth.xpm d2x-rebirth.png
 
 
 %build
-COMMON_FLAGS="prefix=/usr d1x_sharepath=%{_datadir}/d1x/full d2x_sharepath=%{_datadir}/d2x/full ipv6=1 verbosebuild=1"
 export CXXFLAGS="$RPM_OPT_FLAGS"
-scons $COMMON_FLAGS opengl=0
-mv d1x-rebirth/d1x-rebirth d1x-rebirth-sdl
-mv d2x-rebirth/d2x-rebirth d2x-rebirth-sdl
-scons $COMMON_FLAGS opengl=1
-mv d1x-rebirth/d1x-rebirth d1x-rebirth-gl
-mv d2x-rebirth/d2x-rebirth d2x-rebirth-gl
+scons prefix=/usr d1x_sharepath=%{_datadir}/d1x/full d2x_sharepath=%{_datadir}/d2x/full \
+      ipv6=1 verbosebuild=1 opengl=1 sdl2=1
 
 
 %install
 mkdir -p $RPM_BUILD_ROOT%{_bindir}
+mkdir -p $RPM_BUILD_ROOT%{_libexecdir}
 mkdir -p $RPM_BUILD_ROOT%{_datadir}/d1x/full
 mkdir -p $RPM_BUILD_ROOT%{_datadir}/d1x/d1shar
 mkdir -p $RPM_BUILD_ROOT%{_datadir}/d2x/full
 mkdir -p $RPM_BUILD_ROOT%{_datadir}/d2x/d2shar
-install -m 755 d1x-rebirth-sdl $RPM_BUILD_ROOT%{_bindir}
-install -m 755 d1x-rebirth-gl $RPM_BUILD_ROOT%{_bindir}
-install -m 755 d2x-rebirth-sdl $RPM_BUILD_ROOT%{_bindir}
-install -m 755 d2x-rebirth-gl $RPM_BUILD_ROOT%{_bindir}
+install -m 755 build/d1x-rebirth/d1x-rebirth $RPM_BUILD_ROOT%{_libexecdir}/d1x-rebirth
+install -m 755 build/d2x-rebirth/d2x-rebirth $RPM_BUILD_ROOT%{_libexecdir}/d2x-rebirth
 install -p -m 755 %{SOURCE1} $RPM_BUILD_ROOT%{_bindir}/d1x-rebirth
 install -p -m 755 %{SOURCE2} $RPM_BUILD_ROOT%{_bindir}/d2x-rebirth
 # Install descent 1 shareware files
@@ -109,6 +108,9 @@ install -p -m 644 d1shar/descent.* $RPM_BUILD_ROOT%{_datadir}/d1x/d1shar
 # Install descent 2 shareware files
 install -p -m 644 d2shar10/d2demo.{pig,hog,ham} \
 	$RPM_BUILD_ROOT%{_datadir}/d2x/d2shar
+# For SDL_LoadBMP() calls
+install -p -m 644 d1x-rebirth/d1x-rebirth.bmp $RPM_BUILD_ROOT%{_datadir}/d1x
+install -p -m 644 d2x-rebirth/d2x-rebirth.bmp $RPM_BUILD_ROOT%{_datadir}/d2x
 # below is the desktop file and icon stuff.
 mkdir -p $RPM_BUILD_ROOT%{_datadir}/appdata
 mkdir -p $RPM_BUILD_ROOT%{_datadir}/applications
@@ -134,7 +136,8 @@ appstream-util validate-relax --nonet \
 %files
 %doc README.md d1x-rebirth/RELEASE-NOTES.txt
 %license COPYING.txt GPL-3.txt descent1-shareware-readmes
-%{_bindir}/d1x-rebirth*
+%{_bindir}/d1x-rebirth
+%{_libexecdir}/d1x-rebirth
 %{_datadir}/d1x
 %{_datadir}/appdata/d1x-rebirth.appdata.xml
 %{_datadir}/applications/d1x-rebirth.desktop
@@ -143,7 +146,8 @@ appstream-util validate-relax --nonet \
 %files -n d2x
 %doc README.md d2x-rebirth/RELEASE-NOTES.txt
 %license COPYING.txt GPL-3.txt descent2-shareware-readmes
-%{_bindir}/d2x-rebirth*
+%{_bindir}/d2x-rebirth
+%{_libexecdir}/d2x-rebirth
 %{_datadir}/d2x
 %{_datadir}/appdata/d2x-rebirth.appdata.xml
 %{_datadir}/applications/d2x-rebirth.desktop
@@ -151,6 +155,14 @@ appstream-util validate-relax --nonet \
 
 
 %changelog
+* Thu Mar 10 2022 Hans de Goede <j.w.r.degoede@gmail.com> - 1.43-31.rebirth.20220222git7258b7f
+- Update to 20220222 snapshot
+- Move to SDL2
+- The software renderer has regressions in recent version (crashes)
+  and it only works with SDL1. OpenGL is available on pretty much
+  every system now, so drop the software renderer
+- Fix FTBFS
+
 * Thu Feb 10 2022 RPM Fusion Release Engineering <sergiomb@rpmfusion.org> - 1.43-30.rebirth.20210126git1afd0ee
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_36_Mass_Rebuild
 

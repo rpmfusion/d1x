@@ -1,0 +1,34 @@
+The DXX_CONSTANT_TRUE test in common/include/partial_range.h for some
+reason triggers with gcc12 on the partial_const_range() at line 403 of
+similar/main/piggy.cpp.
+diff -up dxx-rebirth-7258b7fd5966fc38e53f4d8192b0c810829ada02/similar/main/automap.cpp~ dxx-rebirth-7258b7fd5966fc38e53f4d8192b0c810829ada02/similar/main/automap.cpp
+--- dxx-rebirth-7258b7fd5966fc38e53f4d8192b0c810829ada02/similar/main/automap.cpp~	2022-01-30 05:40:54.000000000 +0100
++++ dxx-rebirth-7258b7fd5966fc38e53f4d8192b0c810829ada02/similar/main/automap.cpp	2022-03-09 18:33:31.539914719 +0100
+@@ -370,7 +370,7 @@ game_marker_index convert_player_marker_
+ 		return static_cast<game_marker_index>((player_num * MAX_DROP_MULTI_COOP) + static_cast<unsigned>(player_marker_num));
+ 	if (game_mode & GM_MULTI)
+ 		return static_cast<game_marker_index>((player_num * MAX_DROP_MULTI_COMPETITIVE) + static_cast<unsigned>(player_marker_num));
+-	return game_marker_index{player_marker_num};
++	return static_cast<game_marker_index>(static_cast<unsigned>(player_marker_num));
+ }
+ 
+ unsigned d_marker_state::get_markers_per_player(const game_mode_flags game_mode, const unsigned max_numplayers)
+diff -up dxx-rebirth-7258b7fd5966fc38e53f4d8192b0c810829ada02/common/include/partial_range.h~ dxx-rebirth-7258b7fd5966fc38e53f4d8192b0c810829ada02/common/include/partial_range.h
+--- dxx-rebirth-7258b7fd5966fc38e53f4d8192b0c810829ada02/common/include/partial_range.h~	2022-01-30 05:40:54.000000000 +0100
++++ dxx-rebirth-7258b7fd5966fc38e53f4d8192b0c810829ada02/common/include/partial_range.h	2022-03-09 19:22:42.791659611 +0100
+@@ -309,15 +309,6 @@ inline partial_range_t<iterator_type, in
+ #endif
+ 	iterator_type range_begin, const std::size_t index_begin, const std::size_t index_end)
+ {
+-#ifdef DXX_CONSTANT_TRUE
+-	/* Compile-time only check.  Runtime handles (index_begin >
+-	 * index_end) correctly, and it can happen in a correct program.  If
+-	 * it is guaranteed to happen, then the range is always empty, which
+-	 * likely indicates a bug.
+-	 */
+-	if (DXX_CONSTANT_TRUE(!(index_begin < index_end)))
+-		DXX_ALWAYS_ERROR_FUNCTION(partial_range_is_always_empty, "offset never less than length");
+-#endif
+ #ifdef DXX_HAVE_BUILTIN_OBJECT_SIZE
+ 	/* Avoid iterator dereference if range is empty */
+ 	if (index_end)
