@@ -20,6 +20,7 @@ Patch1:		d1x-gcc12.patch
 Patch2:		d1x-window_icon_bitmap.patch
 # Fix compilation on armv7hl, can be dropped when we drop armv7hl support
 Patch3:		d1x-disable-Werror-useless-cast.patch
+Patch4:     fix_scons_issue.patch
 URL:		https://www.dxx-rebirth.com/
 BuildRequires:	gcc gcc-c++ libpng-devel
 BuildRequires:	SDL2-devel SDL2_mixer-devel SDL2_image-devel
@@ -68,10 +69,11 @@ robots-h.mvl files to the dir.
 
 %prep
 %setup -q -n dxx-rebirth-%{commit} -a 3 -a 4
-%patch0 -p1
-%patch1 -p1
-%patch2 -p1
-%patch3 -p1
+%patch 0 -p1
+%patch 1 -p1
+%patch 2 -p1
+%patch 3 -p1
+%patch 4 -p1
 # Fixup encoding and CTRL+Z at the end of the orderfrm.txt files
 iconv -f CP850 -t UTF-8 d1shar/ORDERFRM.TXT | head -n-3 > ORDERFRM.TXT
 touch -r d1shar/ORDERFRM.TXT ORDERFRM.TXT
