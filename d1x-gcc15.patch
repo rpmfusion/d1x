@@ -1,0 +1,58 @@
+diff -up dxx-rebirth-7258b7fd5966fc38e53f4d8192b0c810829ada02/common/include/physfsx.h~ dxx-rebirth-7258b7fd5966fc38e53f4d8192b0c810829ada02/common/include/physfsx.h
+--- dxx-rebirth-7258b7fd5966fc38e53f4d8192b0c810829ada02/common/include/physfsx.h~	2025-03-31 17:51:01.000000000 +0200
++++ dxx-rebirth-7258b7fd5966fc38e53f4d8192b0c810829ada02/common/include/physfsx.h	2025-03-31 18:13:02.522821207 +0200
+@@ -78,9 +78,9 @@ __attribute_always_inline()
+ static inline PHYSFS_sint64 PHYSFSX_check_read(PHYSFS_File *file, V *v, const PHYSFS_uint32 S, const PHYSFS_uint32 C)
+ {
+ 	if constexpr (std::is_integral<V>::value)
+-		static_assert(std::is_pod<V>::value, "non-POD integral value read");
++		static_assert(std::is_standard_layout<V>::value, "non-POD integral value read");
+ 	else
+-		static_assert(std::is_pod<V>::value, "non-POD non-integral value read");
++		static_assert(std::is_standard_layout<V>::value, "non-POD non-integral value read");
+ 	DXX_PHYSFS_CHECK_READ_SIZE_OBJECT_SIZE(S, C, v);
+ 	return PHYSFS_read(file, v, S, C);
+ }
+@@ -89,7 +89,7 @@ template <typename V, std::size_t N>
+ __attribute_always_inline()
+ static inline PHYSFS_sint64 PHYSFSX_check_read(PHYSFS_File *file, std::array<V, N> &v, PHYSFS_uint32 S, PHYSFS_uint32 C)
+ {
+-	static_assert(std::is_pod<V>::value, "C++ array of non-POD elements read");
++	static_assert(std::is_standard_layout<V>::value, "C++ array of non-POD elements read");
+ 	DXX_PHYSFS_CHECK_READ_SIZE_ARRAY_SIZE(S, C);
+ 	return PHYSFSX_check_read(file, &v[0], S, C);
+ }
+@@ -107,11 +107,11 @@ static inline PHYSFS_sint64 PHYSFSX_chec
+ {
+ 	if constexpr (std::is_integral<V>::value)
+ 	{
+-		static_assert(std::is_pod<V>::value, "non-POD integral value written");
++		static_assert(std::is_standard_layout<V>::value, "non-POD integral value written");
+ 		DXX_PHYSFS_CHECK_WRITE_ELEMENT_SIZE_CONSTANT(S,C);
+ 	}
+ 	else
+-		static_assert(std::is_pod<V>::value, "non-POD non-integral value written");
++		static_assert(std::is_standard_layout<V>::value, "non-POD non-integral value written");
+ 	DXX_PHYSFS_CHECK_WRITE_SIZE_OBJECT_SIZE(S, C, v);
+ 	return PHYSFS_write(file, v, S, C);
+ }
+@@ -120,7 +120,7 @@ template <typename V, std::size_t N>
+ __attribute_always_inline()
+ static inline PHYSFS_sint64 PHYSFSX_check_write(PHYSFS_File *file, const std::array<V, N> &v, PHYSFS_uint32 S, PHYSFS_uint32 C)
+ {
+-	static_assert(std::is_pod<V>::value, "C++ array of non-POD elements written");
++	static_assert(std::is_standard_layout<V>::value, "C++ array of non-POD elements written");
+ 	DXX_PHYSFS_CHECK_WRITE_CONSTANTS(S,C);
+ 	return PHYSFSX_check_write(file, &v[0], S, C);
+ }
+diff -up dxx-rebirth-7258b7fd5966fc38e53f4d8192b0c810829ada02/d2x-rebirth/main/libmve.h~ dxx-rebirth-7258b7fd5966fc38e53f4d8192b0c810829ada02/d2x-rebirth/main/libmve.h
+--- dxx-rebirth-7258b7fd5966fc38e53f4d8192b0c810829ada02/d2x-rebirth/main/libmve.h~	2022-01-30 05:40:54.000000000 +0100
++++ dxx-rebirth-7258b7fd5966fc38e53f4d8192b0c810829ada02/d2x-rebirth/main/libmve.h	2025-03-31 19:09:29.816801945 +0200
+@@ -11,6 +11,7 @@
+ 
+ #ifdef __cplusplus
+ #include <memory>
++#include <cstdint>
+ 
+ enum class MVE_StepStatus
+ {

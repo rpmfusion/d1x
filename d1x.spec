@@ -6,7 +6,7 @@
 Summary:	Descent 1 game and shareware data files (d1x-rebirth version)
 Name:		d1x
 Version:	1.43
-Release:	36.rebirth.%{snapshotdate}git%{shortcommit}%{?dist}
+Release:	37.rebirth.%{snapshotdate}git%{shortcommit}%{?dist}
 License:	non-commercial
 Source0:	https://github.com/dxx-rebirth/dxx-rebirth/archive/%{commit}/dxx-rebirth-%{shortcommit}.tar.gz
 Source1:	d1x-rebirth.sh
@@ -20,7 +20,8 @@ Patch1:		d1x-gcc12.patch
 Patch2:		d1x-window_icon_bitmap.patch
 # Fix compilation on armv7hl, can be dropped when we drop armv7hl support
 Patch3:		d1x-disable-Werror-useless-cast.patch
-Patch4:     fix_scons_issue.patch
+Patch4:		fix_scons_issue.patch
+Patch5:		d1x-gcc15.patch
 URL:		https://www.dxx-rebirth.com/
 BuildRequires:	gcc gcc-c++ libpng-devel
 BuildRequires:	SDL2-devel SDL2_mixer-devel SDL2_image-devel
@@ -74,6 +75,7 @@ robots-h.mvl files to the dir.
 %patch 2 -p1
 %patch 3 -p1
 %patch 4 -p1
+%patch 5 -p1
 # Fixup encoding and CTRL+Z at the end of the orderfrm.txt files
 iconv -f CP850 -t UTF-8 d1shar/ORDERFRM.TXT | head -n-3 > ORDERFRM.TXT
 touch -r d1shar/ORDERFRM.TXT ORDERFRM.TXT
@@ -160,6 +162,9 @@ appstream-util validate-relax --nonet \
 
 
 %changelog
+* Mon Mar 31 2025 Hans de Goede <j.w.r.degoede@gmail.com> - 1.43-37.rebirth.20220222git7258b7f
+- Fix FTBFS with gcc15
+
 * Wed Jan 29 2025 RPM Fusion Release Engineering <sergiomb@rpmfusion.org> - 1.43-36.rebirth.20220222git7258b7f
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_42_Mass_Rebuild
 
