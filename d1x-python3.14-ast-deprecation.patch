@@ -1,0 +1,34 @@
+From 0b3b5004e81f634ab8893a0ef2057fdf8032ab05 Mon Sep 17 00:00:00 2001
+From: Kp <kp@valhallalegends.com>
+Date: Sun, 5 May 2024 20:52:17 +0000
+Subject: [PATCH] Update generate-kconfig-udlr.py for Python AST deprecation
+
+Python 3.8 deprecated use of `Num`, replacing it with `Constant`.
+Python 3.12 issues a runtime warning for use of the old name, and
+indicates that Python 3.14 will drop support for the old form.  There is
+no need to use the old form, so convert to the new form.  Add a type
+check that rejects use of non-numbers here, since those will fail later.
+Rejecting it here produces a clear error message.
+---
+ similar/main/generate-kconfig-udlr.py | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/similar/main/generate-kconfig-udlr.py b/similar/main/generate-kconfig-udlr.py
+index 67f2b4197..3b4dafe50 100644
+--- a/similar/main/generate-kconfig-udlr.py
++++ b/similar/main/generate-kconfig-udlr.py
+@@ -84,9 +84,11 @@ def visit_Name(self,node):
+ 			raise InputException('%s:%u: %r expression %r uses undefined name %s' % (self.source, self.lno, self.name, self.expr, node.id))
+ 
+ 	# Resolve numbers by returning the value as-is.
+-	@staticmethod
+-	def visit_Num(node):
+-		return node.n
++	def visit_Constant(self,node):
++		result = node.value
++		if not isinstance(result, int):
++			raise InputException(f'{self.source}:{self.lno}: {self.name!r} expression {self.expr!r} uses unsupported constant {type(result)}')
++		return result
+ 
+ class Main:
+ 	def __init__(self):

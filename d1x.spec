@@ -6,7 +6,7 @@
 Summary:	Descent 1 game and shareware data files (d1x-rebirth version)
 Name:		d1x
 Version:	1.43
-Release:	38.rebirth.%{snapshotdate}git%{shortcommit}%{?dist}
+Release:	39.rebirth.%{snapshotdate}git%{shortcommit}%{?dist}
 License:	non-commercial
 Source0:	https://github.com/dxx-rebirth/dxx-rebirth/archive/%{commit}/dxx-rebirth-%{shortcommit}.tar.gz
 Source1:	d1x-rebirth.sh
@@ -22,6 +22,8 @@ Patch2:		d1x-window_icon_bitmap.patch
 Patch3:		d1x-disable-Werror-useless-cast.patch
 Patch4:		fix_scons_issue.patch
 Patch5:		d1x-gcc15.patch
+# https://github.com/dxx-rebirth/dxx-rebirth/commit/0b3b5004e81f634ab8893a0ef2057fdf8032ab05
+Patch6:		d1x-python3.14-ast-deprecation.patch
 URL:		https://www.dxx-rebirth.com/
 BuildRequires:	gcc gcc-c++ libpng-devel
 BuildRequires:	SDL2-devel SDL2_mixer-devel SDL2_image-devel
@@ -76,6 +78,7 @@ robots-h.mvl files to the dir.
 %patch 3 -p1
 %patch 4 -p1
 %patch 5 -p1
+%patch 6 -p1
 # Fixup encoding and CTRL+Z at the end of the orderfrm.txt files
 iconv -f CP850 -t UTF-8 d1shar/ORDERFRM.TXT | head -n-3 > ORDERFRM.TXT
 touch -r d1shar/ORDERFRM.TXT ORDERFRM.TXT
@@ -162,6 +165,9 @@ appstream-util validate-relax --nonet \
 
 
 %changelog
+* Thu Sep 04 2025 Mamoru TASAKA <mtasaka@fedoraproject.org> - 1.43-39.rebirth.20220222git7258b7f
+- Backport upstream patch for python3.14 some ast class deprecation
+
 * Sun Jul 27 2025 RPM Fusion Release Engineering <sergiomb@rpmfusion.org> - 1.43-38.rebirth.20220222git7258b7f
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_43_Mass_Rebuild
 
