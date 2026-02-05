@@ -6,7 +6,7 @@
 Summary:	Descent 1 game and shareware data files (d1x-rebirth version)
 Name:		d1x
 Version:	1.43
-Release:	40.rebirth.%{snapshotdate}git%{shortcommit}%{?dist}
+Release:	41.rebirth.%{snapshotdate}git%{shortcommit}%{?dist}
 License:	non-commercial
 Source0:	https://github.com/dxx-rebirth/dxx-rebirth/archive/%{commit}/dxx-rebirth-%{shortcommit}.tar.gz
 Source1:	d1x-rebirth.sh
@@ -97,7 +97,8 @@ convert d2x-rebirth/d2x-rebirth.xpm d2x-rebirth.png
 
 
 %build
-export CXXFLAGS="$RPM_OPT_FLAGS"
+# Work around new warnings with GCC16. Drop the -Wno-unused* options when rebasing to newer snapshot.
+export CXXFLAGS="$RPM_OPT_FLAGS -Wno-unused-but-set-parameter -Wno-unused-but-set-variable"
 scons prefix=/usr d1x_sharepath=%{_datadir}/d1x/full d2x_sharepath=%{_datadir}/d2x/full \
       ipv6=1 verbosebuild=1 opengl=1 sdl2=1
 
@@ -165,6 +166,9 @@ appstream-util validate-relax --nonet \
 
 
 %changelog
+* Thu Feb 05 2026 Dominik Mierzejewski <dominik@greysector.net> -  1.43-41.rebirth.20220222git7258b7f
+- Work around FTBFS with GCC16
+
 * Mon Feb 02 2026 RPM Fusion Release Engineering <sergiomb@rpmfusion.org> - 1.43-40.rebirth.20220222git7258b7f
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_44_Mass_Rebuild
 
