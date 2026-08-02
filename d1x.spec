@@ -6,7 +6,7 @@
 Summary:	Descent 1 game and shareware data files (d1x-rebirth version)
 Name:		d1x
 Version:	1.43
-Release:	41.rebirth.%{snapshotdate}git%{shortcommit}%{?dist}
+Release:	42.rebirth.%{snapshotdate}git%{shortcommit}%{?dist}
 License:	non-commercial
 Source0:	https://github.com/dxx-rebirth/dxx-rebirth/archive/%{commit}/dxx-rebirth-%{shortcommit}.tar.gz
 Source1:	d1x-rebirth.sh
@@ -166,6 +166,9 @@ appstream-util validate-relax --nonet \
 
 
 %changelog
+* Sun Aug 02 2026 RPM Fusion Release Engineering <leigh123linux@rpmfusion.org> - 1.43-42.rebirth.20220222git7258b7f
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_45_Mass_Rebuild
+
 * Thu Feb 05 2026 Dominik Mierzejewski <dominik@greysector.net> -  1.43-41.rebirth.20220222git7258b7f
 - Work around FTBFS with GCC16
 
